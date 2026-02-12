@@ -1,5 +1,11 @@
-FROM composer:2 AS vendor
+FROM php:8.3-cli-alpine AS vendor
 WORKDIR /app
+
+RUN apk add --no-cache git unzip icu-dev \
+    && docker-php-ext-install intl
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
 COPY backend/composer.json backend/composer.lock ./
 RUN composer install \
     --no-dev \
@@ -19,8 +25,8 @@ RUN npm run build
 FROM php:8.3-cli-alpine
 WORKDIR /app
 
-RUN apk add --no-cache bash libpq \
-    && docker-php-ext-install pdo pdo_pgsql
+RUN apk add --no-cache bash libpq icu-dev \
+    && docker-php-ext-install intl pdo pdo_pgsql
 
 COPY backend/. ./
 COPY --from=vendor /app/vendor ./vendor
