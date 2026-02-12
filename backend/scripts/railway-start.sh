@@ -17,4 +17,6 @@ if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
   php artisan migrate --force
 fi
 
+php artisan package:discover --ansi
+
 exec php artisan serve --host=0.0.0.0 --port="${PORT:-8080}"
