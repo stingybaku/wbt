@@ -25,7 +25,7 @@ RUN npm run build
 FROM php:8.3-cli-alpine
 WORKDIR /app
 
-RUN apk add --no-cache bash libpq icu-dev libzip-dev \
+RUN apk add --no-cache bash postgresql-libs postgresql-dev icu-dev libzip-dev \
     && docker-php-ext-install intl zip pdo pdo_pgsql
 
 COPY backend/. ./
