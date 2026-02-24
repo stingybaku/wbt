@@ -5,6 +5,39 @@ if [ ! -f .env ]; then
   cp .env.example .env
 fi
 
+upsert_env() {
+  local key="$1"
+  local value="$2"
+  if grep -q "^${key}=" .env; then
+    sed -i "s|^${key}=.*|${key}=${value}|" .env
+  else
+    echo "${key}=${value}" >> .env
+  fi
+}
+
+# Normalize Railway Postgres variables to Laravel DB_* variables.
+if [ -n "${DATABASE_URL:-}" ] && [ -z "${DB_URL:-}" ]; then
+  export DB_URL="${DATABASE_URL}"
+fi
+if [ -n "${PGHOST:-}" ] && [ -z "${DB_HOST:-}" ]; then
+  export DB_HOST="${PGHOST}"
+fi
+if [ -n "${PGPORT:-}" ] && [ -z "${DB_PORT:-}" ]; then
+  export DB_PORT="${PGPORT}"
+fi
+if [ -n "${PGDATABASE:-}" ] && [ -z "${DB_DATABASE:-}" ]; then
+  export DB_DATABASE="${PGDATABASE}"
+fi
+if [ -n "${PGUSER:-}" ] && [ -z "${DB_USERNAME:-}" ]; then
+  export DB_USERNAME="${PGUSER}"
+fi
+if [ -n "${PGPASSWORD:-}" ] && [ -z "${DB_PASSWORD:-}" ]; then
+  export DB_PASSWORD="${PGPASSWORD}"
+fi
+if [ -n "${DB_URL:-}" ] || [ -n "${DB_HOST:-}" ]; then
+  export DB_CONNECTION="${DB_CONNECTION:-pgsql}"
+fi
+
 # Railway can inject APP_KEY as an empty env var, which overrides .env.
 # If that happens, promote a valid key from .env into the process env first.
 if [ -z "${APP_KEY:-}" ]; then
@@ -31,13 +64,19 @@ if [ -z "${APP_KEY:-}" ]; then
 fi
 
 # Persist runtime APP_KEY to .env so all request workers read a non-empty key.
-if grep -q '^APP_KEY=' .env; then
-  sed -i "s|^APP_KEY=.*|APP_KEY=${APP_KEY}|" .env
-else
-  echo "APP_KEY=${APP_KEY}" >> .env
-fi
+upsert_env "APP_KEY" "${APP_KEY}"
+
+# Persist runtime DB settings to .env to avoid SQLite fallback in request workers.
+if [ -n "${DB_CONNECTION:-}" ]; then upsert_env "DB_CONNECTION" "${DB_CONNECTION}"; fi
+if [ -n "${DB_URL:-}" ]; then upsert_env "DB_URL" "${DB_URL}"; fi
+if [ -n "${DB_HOST:-}" ]; then upsert_env "DB_HOST" "${DB_HOST}"; fi
+if [ -n "${DB_PORT:-}" ]; then upsert_env "DB_PORT" "${DB_PORT}"; fi
+if [ -n "${DB_DATABASE:-}" ]; then upsert_env "DB_DATABASE" "${DB_DATABASE}"; fi
+if [ -n "${DB_USERNAME:-}" ]; then upsert_env "DB_USERNAME" "${DB_USERNAME}"; fi
+if [ -n "${DB_PASSWORD:-}" ]; then upsert_env "DB_PASSWORD" "${DB_PASSWORD}"; fi
 
 echo "Startup: APP_KEY is set (length ${#APP_KEY})."
+echo "Startup: DB_CONNECTION=${DB_CONNECTION:-unset} DB_HOST=${DB_HOST:-unset} DB_DATABASE=${DB_DATABASE:-unset}"
 
 if [ -n "${RAILWAY_PUBLIC_DOMAIN:-}" ] && [ -z "${APP_URL:-}" ]; then
   export APP_URL="https://${RAILWAY_PUBLIC_DOMAIN}"
