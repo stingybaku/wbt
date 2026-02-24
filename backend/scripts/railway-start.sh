@@ -30,6 +30,13 @@ if [ -z "${APP_KEY:-}" ]; then
   exit 1
 fi
 
+# Persist runtime APP_KEY to .env so all request workers read a non-empty key.
+if grep -q '^APP_KEY=' .env; then
+  sed -i "s|^APP_KEY=.*|APP_KEY=${APP_KEY}|" .env
+else
+  echo "APP_KEY=${APP_KEY}" >> .env
+fi
+
 echo "Startup: APP_KEY is set (length ${#APP_KEY})."
 
 if [ -n "${RAILWAY_PUBLIC_DOMAIN:-}" ] && [ -z "${APP_URL:-}" ]; then
