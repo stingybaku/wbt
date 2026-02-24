@@ -75,12 +75,24 @@ if [ -n "${DB_DATABASE:-}" ]; then upsert_env "DB_DATABASE" "${DB_DATABASE}"; fi
 if [ -n "${DB_USERNAME:-}" ]; then upsert_env "DB_USERNAME" "${DB_USERNAME}"; fi
 if [ -n "${DB_PASSWORD:-}" ]; then upsert_env "DB_PASSWORD" "${DB_PASSWORD}"; fi
 
-echo "Startup: APP_KEY is set (length ${#APP_KEY})."
-echo "Startup: DB_CONNECTION=${DB_CONNECTION:-unset} DB_HOST=${DB_HOST:-unset} DB_DATABASE=${DB_DATABASE:-unset}"
+if [ -n "${RAILWAY_PUBLIC_DOMAIN:-}" ]; then
+  CURRENT_APP_URL="${APP_URL:-}"
+  if [ -z "${CURRENT_APP_URL}" ]; then
+    CURRENT_APP_URL="$(sed -n 's/^APP_URL=//p' .env | head -n1 | tr -d '\r' || true)"
+  fi
 
-if [ -n "${RAILWAY_PUBLIC_DOMAIN:-}" ] && [ -z "${APP_URL:-}" ]; then
-  export APP_URL="https://${RAILWAY_PUBLIC_DOMAIN}"
+  case "${CURRENT_APP_URL}" in
+    ""|http://localhost|https://localhost|http://127.0.0.1|https://127.0.0.1)
+      export APP_URL="https://${RAILWAY_PUBLIC_DOMAIN}"
+      ;;
+  esac
 fi
+
+if [ -n "${APP_URL:-}" ]; then upsert_env "APP_URL" "${APP_URL}"; fi
+
+echo "Startup: APP_KEY is set (length ${#APP_KEY})."
+echo "Startup: APP_URL=${APP_URL:-unset}"
+echo "Startup: DB_CONNECTION=${DB_CONNECTION:-unset} DB_HOST=${DB_HOST:-unset} DB_DATABASE=${DB_DATABASE:-unset}"
 
 if [ ! -L public/storage ]; then
   php artisan storage:link || true
