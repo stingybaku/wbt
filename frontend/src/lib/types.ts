@@ -23,3 +23,8 @@ export type ProjectsResponse = {
 export type CreateProjectResponse = {
   project: Project;
 };
+
+export type FrontendTextsResponse = {
+  route_key: string;
+  texts: Record<string, string>;
+};

@@ -1,4 +1,6 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { fetchFrontendTexts } from '../lib/api';
+import { createTextResolver, type FrontendTextMap } from '../lib/text';
 
 type LoginFormProps = {
   loading: boolean;
@@ -6,8 +8,26 @@ type LoginFormProps = {
 };
 
 export function LoginForm({ loading, onSubmit }: LoginFormProps) {
+  const routeKey = 'auth.login';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [frontendTexts, setFrontendTexts] = useState<FrontendTextMap | null>(null);
+  const hasLoggedFetchError = useRef(false);
+
+  useEffect(() => {
+    fetchFrontendTexts(routeKey)
+      .then((response) => {
+        setFrontendTexts(response.texts);
+      })
+      .catch((error: unknown) => {
+        if (!hasLoggedFetchError.current) {
+          console.error('Failed to fetch frontend texts for auth.login', error);
+          hasLoggedFetchError.current = true;
+        }
+      });
+  }, []);
+
+  const t = useMemo(() => createTextResolver(frontendTexts), [frontendTexts]);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -16,10 +36,10 @@ export function LoginForm({ loading, onSubmit }: LoginFormProps) {
 
   return (
     <form className="card" onSubmit={handleSubmit}>
-      <h1>WBT Generator</h1>
-      <p className="muted">Sign in to manage projects.</p>
+      <h1>{t('auth.title', 'WBT Generator')}</h1>
+      <p className="muted">{t('auth.subtitle', 'Sign in to manage projects.')}</p>
       <label>
-        Email
+        {t('auth.email_label', 'Email')}
         <input
           type="email"
           value={email}
@@ -29,7 +49,7 @@ export function LoginForm({ loading, onSubmit }: LoginFormProps) {
         />
       </label>
       <label>
-        Password
+        {t('auth.password_label', 'Password')}
         <input
           type="password"
           value={password}
@@ -39,7 +59,7 @@ export function LoginForm({ loading, onSubmit }: LoginFormProps) {
         />
       </label>
       <button type="submit" disabled={loading}>
-        {loading ? 'Signing in...' : 'Sign in'}
+        {loading ? t('auth.signing_in_button', 'Signing in...') : t('auth.submit_button', 'Sign in')}
       </button>
     </form>
   );

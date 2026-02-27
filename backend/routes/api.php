@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EventsController;
+use App\Http\Controllers\FrontendTextController;
 use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\ModuleFlagsController;
 use App\Http\Controllers\ProjectsController;
@@ -26,3 +27,4 @@ Route::get('/unsplash/search', [UnsplashController::class, 'search']);
 Route::post('/projects/{id}/scorm', [ScormController::class, 'export']);
 
 Route::post('/projects/{id}/events', [EventsController::class, 'store']);
+Route::get('/frontend-texts', [FrontendTextController::class, 'index']);

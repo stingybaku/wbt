@@ -1,4 +1,4 @@
-import type { CreateProjectResponse, LoginResponse, ProjectsResponse } from './types';
+import type { CreateProjectResponse, FrontendTextsResponse, LoginResponse, ProjectsResponse } from './types';
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api').replace(/\/$/, '');
 
@@ -46,4 +46,8 @@ export function createProject(
     token,
     body: payload
   });
+}
+
+export function fetchFrontendTexts(routeKey: string): Promise<FrontendTextsResponse> {
+  return request<FrontendTextsResponse>(`/frontend-texts?route_key=${encodeURIComponent(routeKey)}`);
 }
