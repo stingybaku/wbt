@@ -1,0 +1,168 @@
+:root {
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  color: #111827;
+  background: radial-gradient(circle at top left, #fde68a 0%, #f8fafc 45%, #e2e8f0 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+}
+
+.layout {
+  width: min(920px, 100%);
+  display: grid;
+  gap: 1rem;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(4px);
+  border: 1px solid #d1d5db;
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1);
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 1.5rem;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+}
+
+.muted {
+  color: #4b5563;
+  font-size: 0.92rem;
+}
+
+form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.92rem;
+}
+
+input {
+  border: 1px solid #cbd5e1;
+  background: white;
+  color: #111827;
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.95rem;
+}
+
+input:focus {
+  outline: 2px solid #f59e0b;
+  outline-offset: 1px;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+  background: #111827;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+button.ghost {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.project-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.project-list li {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.project-list time {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.error-banner {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  max-width: min(640px, calc(100vw - 2rem));
+  background: #7f1d1d;
+  color: #fff;
+  border-radius: 10px;
+  padding: 0.75rem 0.85rem;
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .actions {
+    width: 100%;
+  }
+
+  .actions button {
+    flex: 1;
+  }
+
+  .project-list li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
