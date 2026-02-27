@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -23,7 +24,7 @@ class User extends Authenticatable implements FilamentUser
         'name',
         'email',
         'password',
-        'role',
+        'role_id',
     ];
 
     /**
@@ -49,8 +50,27 @@ class User extends Authenticatable implements FilamentUser
         ];
     }
 
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class);
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        if (! $this->relationLoaded('role')) {
+            $this->loadMissing('role');
+        }
+
+        return $this->role?->hasPermission($permission) ?? false;
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->role === 'admin';
+        return $this->hasPermission(Role::ACCESS_ADMIN_PANEL);
+    }
+
+    public function canAccessFrontendPortal(): bool
+    {
+        return $this->hasPermission(Role::ACCESS_FRONTEND_PORTAL);
     }
 }
