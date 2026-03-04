@@ -110,8 +110,10 @@ export function App() {
     setProjects([]);
   }
 
+  const isAuthenticated = token !== null && user !== null;
+
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${isAuthenticated ? '' : 'auth-shell'}`.trim()}>
       {error ? <div className="error-banner">{error}</div> : null}
       {!token || !user ? (
         <LoginForm loading={loggingIn} onSubmit={handleLogin} />

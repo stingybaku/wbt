@@ -35,32 +35,62 @@ export function LoginForm({ loading, onSubmit }: LoginFormProps) {
   }
 
   return (
-    <form className="card" onSubmit={handleSubmit}>
-      <h1>{t('auth.title', 'WBT Generator')}</h1>
-      <p className="muted">{t('auth.subtitle', 'Sign in to manage projects.')}</p>
-      <label>
-        {t('auth.email_label', 'Email')}
-        <input
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          required
-          autoComplete="email"
-        />
-      </label>
-      <label>
-        {t('auth.password_label', 'Password')}
-        <input
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-          autoComplete="current-password"
-        />
-      </label>
-      <button type="submit" disabled={loading}>
-        {loading ? t('auth.signing_in_button', 'Signing in...') : t('auth.submit_button', 'Sign in')}
-      </button>
+    <form className="card login-card" onSubmit={handleSubmit}>
+      <section className="login-form-panel">
+        <p className="login-kicker">{t('auth.welcome_kicker', 'WELCOME TO')}</p>
+        <h1 className="login-brand">{t('auth.title', 'INFINITY')}</h1>
+        <p className="muted login-subtitle">{t('auth.subtitle', 'Log in to get updates on the things that interest you.')}</p>
+
+        <label className="login-field">
+          <span className="sr-only">{t('auth.email_label', 'Email')}</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+            autoComplete="email"
+            placeholder={t('auth.email_label', 'Email')}
+          />
+        </label>
+        <label className="login-field">
+          <span className="sr-only">{t('auth.password_label', 'Password')}</span>
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+            autoComplete="current-password"
+            placeholder={t('auth.password_label', 'Password')}
+          />
+        </label>
+        <button className="login-submit" type="submit" disabled={loading}>
+          {loading ? t('auth.signing_in_button', 'SIGNING IN...') : t('auth.submit_button', 'SIGN IN')}
+        </button>
+
+        <p className="login-meta">
+          {t('auth.signup_prompt', 'Do not have an account?')} <a href="#">{t('auth.signup_cta', 'Sign Up Now')}</a>
+        </p>
+        <p className="login-divider">{t('auth.divider_text', 'OR')}</p>
+        <p className="login-social-label">{t('auth.social_prompt', 'Continue with social media')}</p>
+        <div className="login-socials" aria-hidden="true">
+          <span>f</span>
+          <span>t</span>
+          <span>g+</span>
+          <span>in</span>
+        </div>
+      </section>
+
+      <aside className="login-promo" aria-hidden="true">
+        <div className="login-promo-content">
+          <p className="login-promo-brand">{t('auth.promo_brand', 'INFINITY')}</p>
+          <p>
+            {t(
+              'auth.promo_body',
+              'Build compliant and engaging web-based training in minutes, with AI-assisted drafting and publishing.'
+            )}
+          </p>
+        </div>
+      </aside>
     </form>
   );
 }
