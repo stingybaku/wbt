@@ -369,6 +369,9 @@ Schema goals:
 - `screen.id` unique across module
 - `question` screens must include at least 1 interaction
 - `image.alt_text` required when `image` is present
+- `image_text` screens must include an `image` object
+- Duplicate screen IDs are not permitted (enforced globally)
+- Additional constraints implemented in Zod `superRefine` logic
 
 ### A.5 Zod Schema (Starter)
 
