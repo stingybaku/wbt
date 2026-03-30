@@ -15,7 +15,11 @@ class Project extends Model
         'id',
         'title',
         'rights_attestation',
-        'user_id'
+        'user_id',
+        'source_type',
+        'source_url',
+        'source_text',
+        'source_character_count',
     ];
 
     protected $casts = [

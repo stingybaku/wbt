@@ -1,133 +1,107 @@
-import { useEffect, useState } from 'react';
+import { createBrowserRouter, RouterProvider, Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginForm } from './components/LoginForm';
 import { ProjectsView } from './components/ProjectsView';
-import { createProject, fetchProjects, login } from './lib/api';
-import type { Project, User } from './lib/types';
+import { ProjectDetailView } from './components/ProjectDetailView';
+import { CreateProjectWizard } from './components/CreateProjectWizard';
+import { ModuleReviewPage } from './components/ModuleEditorView';
+import { WBTPlayerPage } from './components/WBTPlayer';
+import { login, fetchProjects } from './lib/api';
+import { useState, useEffect } from 'react';
+import type { Project } from './lib/types';
 
-const TOKEN_KEY = 'wbt.auth.token';
-const USER_KEY = 'wbt.auth.user';
-
-function readStoredAuth(): { token: string | null; user: User | null } {
-  const token = localStorage.getItem(TOKEN_KEY);
-  const rawUser = localStorage.getItem(USER_KEY);
-
-  if (!token || !rawUser) {
-    return { token: null, user: null };
-  }
-
-  try {
-    const user = JSON.parse(rawUser) as User;
-    return { token, user };
-  } catch {
-    return { token: null, user: null };
-  }
+function RequireAuth() {
+  const { token } = useAuth();
+  if (!token) return <Navigate to="/login" replace />;
+  return <Outlet />;
 }
 
-export function App() {
-  const stored = readStoredAuth();
-
-  const [token, setToken] = useState<string | null>(stored.token);
-  const [user, setUser] = useState<User | null>(stored.user);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loadingProjects, setLoadingProjects] = useState(false);
-  const [loggingIn, setLoggingIn] = useState(false);
-  const [creating, setCreating] = useState(false);
+function LoginPage() {
+  const { token, setAuth } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadProjects(activeToken: string) {
+  if (token) return <Navigate to="/projects" replace />;
+
+  async function handleLogin(email: string, password: string) {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await login(email, password);
+      setAuth(result.token, result.user);
+      navigate('/projects');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="app-shell auth-shell">
+      {error ? <div className="error-banner">{error}</div> : null}
+      <LoginForm loading={loading} onSubmit={handleLogin} />
+    </main>
+  );
+}
+
+function ProjectsPage() {
+  const { token, user, clearAuth } = useAuth();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadProjects() {
+    if (!token) return;
     setLoadingProjects(true);
     try {
-      const response = await fetchProjects(activeToken);
+      const response = await fetchProjects(token);
       setProjects(response.projects);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load projects');
     } finally {
       setLoadingProjects(false);
     }
   }
 
   useEffect(() => {
-    if (!token) {
-      setProjects([]);
-      return;
-    }
-
-    loadProjects(token).catch((err: unknown) => {
-      const message = err instanceof Error ? err.message : 'Failed to load projects';
-      setError(message);
-    });
-  }, [token]);
-
-  async function handleLogin(email: string, password: string) {
-    setLoggingIn(true);
-    setError(null);
-
-    try {
-      const result = await login(email, password);
-      localStorage.setItem(TOKEN_KEY, result.token);
-      localStorage.setItem(USER_KEY, JSON.stringify(result.user));
-      setToken(result.token);
-      setUser(result.user);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Login failed';
-      setError(message);
-    } finally {
-      setLoggingIn(false);
-    }
-  }
-
-  async function handleCreateProject(title: string) {
-    if (!token) return;
-
-    setCreating(true);
-    setError(null);
-    try {
-      await createProject(token, { title, rights_attestation: true });
-      await loadProjects(token);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to create project';
-      setError(message);
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  async function handleRefresh() {
-    if (!token) return;
-
-    setError(null);
-    try {
-      await loadProjects(token);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to refresh projects';
-      setError(message);
-    }
-  }
-
-  function handleLogout() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    setToken(null);
-    setUser(null);
-    setProjects([]);
-  }
-
-  const isAuthenticated = token !== null && user !== null;
+    loadProjects();
+  }, []);
 
   return (
-    <main className={`app-shell ${isAuthenticated ? '' : 'auth-shell'}`.trim()}>
+    <main className="app-shell">
       {error ? <div className="error-banner">{error}</div> : null}
-      {!token || !user ? (
-        <LoginForm loading={loggingIn} onSubmit={handleLogin} />
-      ) : (
-        <ProjectsView
-          email={user.email}
-          projects={projects}
-          loading={loadingProjects}
-          creating={creating}
-          onCreateProject={handleCreateProject}
-          onRefresh={handleRefresh}
-          onLogout={handleLogout}
-        />
-      )}
+      <ProjectsView
+        email={user?.email ?? ''}
+        projects={projects}
+        loading={loadingProjects}
+        onRefresh={loadProjects}
+        onLogout={clearAuth}
+      />
     </main>
+  );
+}
+
+const router = createBrowserRouter([
+  { path: '/login', element: <LoginPage /> },
+  {
+    element: <RequireAuth />,
+    children: [
+      { path: '/', element: <Navigate to="/projects" replace /> },
+      { path: '/projects', element: <ProjectsPage /> },
+      { path: '/projects/new', element: <CreateProjectWizard /> },
+      { path: '/projects/:id', element: <ProjectDetailView /> },
+      { path: '/projects/:id/review', element: <ModuleReviewPage /> },
+      { path: '/projects/:id/play', element: <WBTPlayerPage /> },
+    ],
+  },
+]);
+
+export function App() {
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   );
 }

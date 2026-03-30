@@ -15,7 +15,8 @@ class Module extends Model
         'id',
         'project_id',
         'module_json',
-        'status'
+        'status',
+        'generation_error',
     ];
 
     protected $casts = [

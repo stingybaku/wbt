@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { fetchFrontendTexts } from '../lib/api';
 import { createTextResolver, type FrontendTextMap } from '../lib/text';
 import type { Project } from '../lib/types';
@@ -7,31 +8,18 @@ type ProjectsViewProps = {
   email: string;
   projects: Project[];
   loading: boolean;
-  creating: boolean;
-  onCreateProject: (title: string) => Promise<void>;
   onRefresh: () => Promise<void>;
   onLogout: () => void;
 };
 
-export function ProjectsView({
-  email,
-  projects,
-  loading,
-  creating,
-  onCreateProject,
-  onRefresh,
-  onLogout
-}: ProjectsViewProps) {
+export function ProjectsView({ email, projects, loading, onRefresh, onLogout }: ProjectsViewProps) {
   const routeKey = 'projects.list';
-  const [title, setTitle] = useState('');
   const [frontendTexts, setFrontendTexts] = useState<FrontendTextMap | null>(null);
   const hasLoggedFetchError = useRef(false);
 
   useEffect(() => {
     fetchFrontendTexts(routeKey)
-      .then((response) => {
-        setFrontendTexts(response.texts);
-      })
+      .then((response) => setFrontendTexts(response.texts))
       .catch((error: unknown) => {
         if (!hasLoggedFetchError.current) {
           console.error('Failed to fetch frontend texts for projects.list', error);
@@ -46,12 +34,6 @@ export function ProjectsView({
   );
   const t = useMemo(() => createTextResolver(frontendTexts), [frontendTexts]);
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    await onCreateProject(title);
-    setTitle('');
-  }
-
   return (
     <section className="layout">
       <header className="topbar">
@@ -62,6 +44,9 @@ export function ProjectsView({
           </p>
         </div>
         <div className="actions">
+          <Link to="/projects/new">
+            <button type="button">{t('projects.new_button', 'New Project')}</button>
+          </Link>
           <button type="button" className="ghost" onClick={onRefresh} disabled={loading}>
             {loading ? t('projects.refreshing_button', 'Refreshing...') : t('projects.refresh_button', 'Refresh')}
           </button>
@@ -71,33 +56,18 @@ export function ProjectsView({
         </div>
       </header>
 
-      <form className="card" onSubmit={handleSubmit}>
-        <h2>{t('projects.create_title', 'Create Project')}</h2>
-        <label>
-          {t('projects.input_label', 'Project title')}
-          <input
-            type="text"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder={t('projects.input_placeholder', 'New compliance training module')}
-            required
-          />
-        </label>
-        <button type="submit" disabled={creating}>
-          {creating ? t('projects.creating_button', 'Creating...') : t('projects.create_button', 'Create project')}
-        </button>
-      </form>
-
       <section className="card">
         <h2>{t('projects.recent_title', 'Recent Projects')}</h2>
         {sortedProjects.length === 0 ? (
-          <p className="muted">{t('projects.empty_state', 'No projects yet.')}</p>
+          <p className="muted">{t('projects.empty_state', 'No projects yet. Create your first one.')}</p>
         ) : (
           <ul className="project-list">
             {sortedProjects.map((project) => (
               <li key={project.id}>
                 <div>
-                  <strong>{project.title}</strong>
+                  <strong>
+                    <Link to={`/projects/${project.id}`}>{project.title}</Link>
+                  </strong>
                   <p className="muted">{project.id}</p>
                 </div>
                 <time>{new Date(project.created_at).toLocaleString()}</time>
