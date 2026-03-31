@@ -171,7 +171,7 @@ class ProjectSourceController extends Controller
 
     private function commandExists(string $command): bool
     {
-        exec('command -v ' . escapeshellarg($command) . ' 2>/dev/null', $out, $code);
+        exec('which ' . escapeshellarg($command) . ' 2>/dev/null', $out, $code);
         return $code === 0;
     }
 
