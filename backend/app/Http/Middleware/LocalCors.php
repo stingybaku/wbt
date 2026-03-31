@@ -16,7 +16,9 @@ class LocalCors
     public function handle(Request $request, Closure $next): Response
     {
         $origin = $request->headers->get('Origin');
-        $allowed = ['http://localhost:5173','http://127.0.0.1:5173'];
+
+        $allowed = array_filter(array_map('trim', explode(',', env('FRONTEND_URL', 'http://localhost:5173,http://127.0.0.1:5173'))));
+
         $headers = [];
 
         if ($origin && in_array($origin, $allowed, true)) {
