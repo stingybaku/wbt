@@ -112,7 +112,7 @@ class ProjectSourceController extends Controller
             $tmp      = tempnam(sys_get_temp_dir(), 'wbt_pdf_') . '.pdf';
             $src      = escapeshellarg($path);
             $dst      = escapeshellarg($tmp);
-            exec("qpdf --pages {$src} 1-100 -- {$dst} 2>/dev/null", $out, $code);
+            exec("qpdf {$src} --pages . 1-100 -- {$dst} 2>/dev/null", $out, $code);
 
             if ($code === 0 && file_exists($tmp) && filesize($tmp) > 0) {
                 $pdfPath  = $tmp;
