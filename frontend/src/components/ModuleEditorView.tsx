@@ -300,7 +300,7 @@ function ScreenEditor({
     interaction0 &&
     (interaction0.kind === 'single_choice' || interaction0.kind === 'multi_choice');
 
-  const showImageSection = screen.type === 'image_text';
+  const showImageSection = true;
 
   return (
     <div className="editor-panel">

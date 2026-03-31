@@ -203,10 +203,27 @@ function ScreenRenderer({
           {screen.title}
         </h2>
 
-        {screen.type === 'text' && <TextScreen screen={screen} />}
-        {screen.type === 'image_text' && (
-          <ImageTextScreen screen={screen} attribution={imageAttribution ?? null} />
+        {screen.image && (
+          <figure className={`player-figure ${screen.type === 'image_text' ? 'player-figure--featured' : ''}`}>
+            <img
+              src={screen.image.url}
+              alt={screen.image.alt_text}
+              className="player-image"
+            />
+            {imageAttribution && (
+              <figcaption className="player-attribution">
+                Photo by{' '}
+                <a href={imageAttribution.url} target="_blank" rel="noopener noreferrer">
+                  {imageAttribution.photographer}
+                </a>{' '}
+                on Unsplash
+              </figcaption>
+            )}
+          </figure>
         )}
+
+        {screen.type === 'text' && <TextScreen screen={screen} />}
+        {screen.type === 'image_text' && <ImageTextScreen screen={screen} />}
         {screen.type === 'accordion' && <AccordionScreen screen={screen} />}
         {screen.type === 'click_reveal' && <ClickRevealScreen screen={screen} />}
         {screen.type === 'question' && (
@@ -244,36 +261,8 @@ function TextScreen({ screen }: { screen: Screen }) {
 
 // ─── Image + text screen ──────────────────────────────────────────────────────
 
-function ImageTextScreen({
-  screen,
-  attribution,
-}: {
-  screen: Screen;
-  attribution: Module['attribution']['unsplash'][number] | null;
-}) {
-  return (
-    <>
-      {screen.image && (
-        <figure className="player-figure">
-          <img
-            src={screen.image.url}
-            alt={screen.image.alt_text}
-            className="player-image"
-          />
-          {attribution && (
-            <figcaption className="player-attribution">
-              Photo by{' '}
-              <a href={attribution.url} target="_blank" rel="noopener noreferrer">
-                {attribution.photographer}
-              </a>{' '}
-              on Unsplash
-            </figcaption>
-          )}
-        </figure>
-      )}
-      <p className="player-body">{screen.body}</p>
-    </>
-  );
+function ImageTextScreen({ screen }: { screen: Screen }) {
+  return <p className="player-body">{screen.body}</p>;
 }
 
 // ─── Accordion screen ─────────────────────────────────────────────────────────

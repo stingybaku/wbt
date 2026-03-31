@@ -67,11 +67,14 @@ class GenerationJob implements ShouldQueue
         }
 
         foreach ($moduleJson['screens'] as &$screen) {
-            if ($screen['type'] !== 'image_text') {
+            // Skip screens that already have a real (non-placeholder) image
+            $existingUrl = $screen['image']['url'] ?? '';
+            if ($existingUrl && !str_contains($existingUrl, 'placeholder')) {
                 continue;
             }
 
-            $query = $screen['title'] ?? '';
+            // Use screen title as query; fall back to screen type for generic imagery
+            $query = trim($screen['title'] ?? '');
             if (!$query) {
                 continue;
             }
