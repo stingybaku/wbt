@@ -8,10 +8,12 @@ use App\Models\Project;
 
 class ProjectsController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         return response()->json([
-            'projects' => Project::orderByDesc('created_at')->get()
+            'projects' => Project::where('user_id', $request->user()->id)
+                ->orderByDesc('created_at')
+                ->get()
         ]);
     }
 
@@ -26,15 +28,17 @@ class ProjectsController extends Controller
             'id' => 'proj_' . Str::uuid()->toString(),
             'title' => $data['title'],
             'rights_attestation' => $data['rights_attestation'],
-            'user_id' => null
+            'user_id' => $request->user()->id,
         ]);
 
         return response()->json(['project' => $project], 201);
     }
 
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
-        $project = Project::findOrFail($id);
+        $project = Project::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
 
         return response()->json(['project' => $project]);
     }

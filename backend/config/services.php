@@ -39,4 +39,9 @@ return [
         'access_key' => env('UNSPLASH_ACCESS_KEY'),
     ],
 
+    'anthropic' => [
+        'api_key' => env('ANTHROPIC_API_KEY'),
+        'model'   => env('ANTHROPIC_MODEL', 'claude-sonnet-4-6'),
+    ],
+
 ];

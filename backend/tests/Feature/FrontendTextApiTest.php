@@ -95,7 +95,9 @@ class FrontendTextApiTest extends TestCase
 
     public function test_api_routes_are_registered_under_api_prefix(): void
     {
-        $response = $this->getJson('/api/projects');
+        $user = \App\Models\User::factory()->create();
+
+        $response = $this->actingAs($user)->getJson('/api/projects');
 
         $response->assertOk()->assertJson(['projects' => []]);
     }

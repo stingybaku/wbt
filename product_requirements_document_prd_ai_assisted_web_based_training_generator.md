@@ -4,13 +4,13 @@
 **WBT Forge** (working title)
 
 ## Document Status
-Draft – MVP Definition (Tightened)
+MVP Implemented — `feature/finalize-schema`
 
 ## Author
 Julio (Product / Engineering)
 
 ## Last Updated
-2026-01-07
+2026-03-30
 
 ---
 
@@ -75,18 +75,22 @@ Users need a tool that:
 
 ## 5. MVP Scope
 
-### 5.1 Content Input
+### 5.1 Content Input ✅ Implemented
 - File upload:
   - PDF
   - DOCX
   - PPTX
 - URL input (public or authenticated via copy/paste)
 - File size limit: 10MB
-- Mandatory user attestation: *“I confirm I have the rights to use this content.”*
+- Mandatory user attestation: *"I confirm I have the rights to use this content."*
+- Text extracted server-side (smalot/pdfparser, phpoffice/phpword, phpoffice/phppresentation)
+- Content capped at 50,000 characters before being passed to the AI
+
+> **Note:** Password-protected PDFs are not supported. URL sources are subject to the target server allowing server-side HTTP requests.
 
 ---
 
-### 5.2 Generation Controls
+### 5.2 Generation Controls ✅ Implemented
 
 Users must provide or choose:
 - **Duration**
@@ -97,12 +101,12 @@ Users must provide or choose:
   - User-defined OR AI-generated
 - **Assessment Questions**
   - User-defined count OR AI-decided
- - **Output Size**
+- **Output Size**
   - Target: 10 screens (minimum acceptable output)
 
 ---
 
-### 5.3 Output Structure
+### 5.3 Output Structure ✅ Implemented
 
 The system generates a validated JSON module containing:
 - Metadata (title, audience, duration)
@@ -121,52 +125,54 @@ The JSON is the **single source of truth** for:
 - Publishing
 - Exporting
 
----
-
-### 5.4 Rendering (Frontend)
-
-- React-based WBT player
-- Screen navigation (Next / Previous)
-- Progress indicator
-- Interactive questions
-- Accessibility-friendly markup
+Generation is handled asynchronously via a Laravel queue job (`GenerationJob`). The job calls the Claude API (`GenerationService`), retries up to 3 times on schema validation failure, and updates the module status to `generated` or `failed`. The frontend polls every 3 seconds until the status changes.
 
 ---
 
-### 5.5 Media (MVP)
+### 5.4 Rendering (Frontend) ✅ Implemented
+
+- React-based WBT player (`WBTPlayer`)
+- Cover screen with module title, audience, duration, and learning objectives
+- Screen navigation (Next / Previous) with progress bar
+- Interactive questions (single and multiple choice) with answer feedback
+- Accordion and click-reveal interactions
+- Completion screen
+- Accessibility-friendly markup (aria-expanded, aria-live, focus management)
+- Preview available at `/projects/:id/play`
+
+---
+
+### 5.5 Media (MVP) ✅ Implemented
 
 - **Images**:
   - Unsplash API (retrieve-only)
-  - Backend proxy to protect API key
-  - Mandatory attribution stored in module JSON
+  - Backend proxy (`UnsplashController`) to protect API key
+  - Mandatory attribution stored in `module.attribution.unsplash`
+  - `image_text` screens are **automatically populated** with a relevant Unsplash image at generation time (using the screen title as the search query)
+  - Users can replace any image via the Unsplash picker in the review editor
 
 - **Audio (Out of Scope for MVP)**:
   - TTS deferred to v2
 
 ---
 
-### 5.6 Review & Publishing
+### 5.6 Review & Publishing ⚠️ Partially Implemented
 
-MVP focuses on upload → generation → review. Publishing is deferred, but implementation should support:
-- A local, app-served learner URL
-- Versioned snapshots on publish for auditability
-- Basic event tracking when publish is enabled:
-  - Start
-  - Screen views
-  - Completion
+- Review editor (`ModuleEditorView`) is implemented at `/projects/:id/review`:
+  - Module metadata editing (title, audience, duration, learning objectives)
+  - Per-screen field editing (title, body, image alt text)
+  - Interaction editors (question choices/feedback, accordion/click-reveal items)
+  - Per-screen review flags (add, resolve)
+  - Unsplash image picker for `image_text` screens
+- Publishing (public learner URL, versioned snapshots, event tracking) is **deferred**
 
 ---
 
-### 5.7 Export
+### 5.7 Export ❌ Deferred (out of MVP scope)
 
-- SCORM 1.2 export
-  - Single SCO
-  - Includes:
-    - imsmanifest.xml
-    - module.json
-    - static player that reads module.json
-
-xAPI export deferred to v2
+- SCORM 1.2 export deferred to v2
+- Backend stub (`ScormController`) exists but is not built out
+- xAPI export deferred to v2
 
 ---
 
@@ -178,38 +184,68 @@ xAPI export deferred to v2
 - Billing / subscriptions
 - Localization / translations
 - Branching scenarios
+- SCORM / xAPI export
+- Public learner URLs / publishing
 
 ---
 
 ## 7. Technical Architecture (MVP)
 
 ### Frontend
-- React + Vite
-- Tailwind CSS
-- Zod for schema validation
+- React + Vite + TypeScript
+- Tailwind-inspired custom CSS
+- Zod for module schema validation (`moduleSchema.ts`)
+- React Router for navigation
+- Key routes:
+  - `/login` — authentication
+  - `/projects` — project list
+  - `/projects/new` — creation wizard
+  - `/projects/:id` — project detail + module status
+  - `/projects/:id/review` — review editor
+  - `/projects/:id/play` — WBT player (preview)
 
 ### Backend
-- Laravel 12
-- SQLite database
+- Laravel 12 + SQLite
+- Laravel Sanctum (token-based auth)
 - REST API
+- Queue-based AI generation (database queue driver)
+- Anthropic Claude API (`anthropic-ai/sdk`) — **not OpenAI**
+  - Default model: `claude-sonnet-4-6`
+  - Configurable via `ANTHROPIC_MODEL` env var
 - Unsplash API proxy
-- SCORM export service
-- OpenAI API integration (platform-provided API key)
+- File parsing: smalot/pdfparser, phpoffice/phpword, phpoffice/phppresentation
 
 ### Local-First Principle
-- Entire system must run locally for demo, except AI generation calls
-- No AWS or cloud dependencies beyond OpenAI API
+- Entire system runs locally for demo
+- External calls: Claude API (generation), Unsplash API (image search)
+- No AWS or cloud storage dependencies
+
+### Starting the application
+```bash
+# Backend (from /backend) — starts server, queue worker, log watcher, backend Vite
+composer dev
+
+# Frontend (from /frontend) — starts React dev server
+npm run dev
+```
+
+Required env vars in `backend/.env`:
+```
+ANTHROPIC_API_KEY=
+ANTHROPIC_MODEL=claude-sonnet-4-6   # use claude-haiku-4-5-20251001 for faster/cheaper testing
+UNSPLASH_ACCESS_KEY=
+```
 
 ---
 
 ## 8. Data Model (MVP)
 
 Core entities:
-- Project
-- Module (JSON payload)
-- Publish (slug-based delivery)
-- Event (basic tracking)
- - User (login required)
+- `User` — login required, projects scoped to user
+- `Project` — title, rights attestation, source type/url/text/character count
+- `Module` — JSON payload, status (`generating` | `generated` | `failed`), generation error
+- `ModuleFlag` — per-screen review flags (stored in both DB and module JSON)
+- `Event` — basic tracking (implemented, publishing trigger deferred)
 
 ---
 
@@ -217,8 +253,9 @@ Core entities:
 
 - Rights attestation logged per project
 - No content redistribution beyond user intent
-- Unsplash attribution compliance
+- Unsplash attribution compliance (stored in module JSON, displayed in player)
 - PII protection compliance (avoid storing learner PII for MVP)
+- API keys protected server-side (Unsplash proxy, Claude key never exposed to frontend)
 
 ---
 
@@ -226,8 +263,9 @@ Core entities:
 
 | Risk | Mitigation |
 |----|----|
-| Low AI output quality | Strong schema validation + human review |
-| API cost creep | No TTS in MVP; Unsplash free tier; cap input size |
+| Low AI output quality | Strong schema validation + up to 3 generation retries + human review editor |
+| API cost creep | No TTS in MVP; Unsplash free tier; 50k char input cap; Haiku model for testing |
+| Generation timeout | Queue worker timeout set to 180s; job timeout 120s |
 | LMS comparison | Position as LMS-free, rapid deployment tool |
 | Overbuilding | Strict MVP scope, local demo focus |
 
@@ -235,33 +273,37 @@ Core entities:
 
 ## 11. Future Enhancements (Post-MVP)
 
+- SCORM 1.2 / xAPI export
+- Public learner URLs with versioned snapshots
+- Basic event tracking (start, screen views, completion)
 - ElevenLabs TTS with cost estimation
-- xAPI export
 - Seat limits & learner management
 - Analytics dashboard
 - Multi-language support
 - Theme marketplace
 - AI-powered content refinement
+- Native document input to Claude (send PDF directly for image-aware generation)
 
 ---
 
 ## 12. MVP Definition of Done
 
-- Local demo: upload/URL → generate → review
-- Unsplash image picker functional
-- SCORM export imports cleanly into SCORM Cloud
-- No external infrastructure required
-- Clear path to v2 monetization
+- [x] Local demo: upload/URL → generate → review
+- [x] Unsplash image picker functional (auto-populated on generation, replaceable in editor)
+- [x] WBT player renders all screen types with interactive questions
+- [ ] SCORM export imports cleanly into SCORM Cloud — **deferred to v2**
+- [x] No external infrastructure required beyond API keys
+- [x] Clear path to v2 monetization
 
 ---
 
 ## 13. Product Positioning (Draft)
 
-> *“Turn your existing documents into interactive training—no LMS required.”*
+> *"Turn your existing documents into interactive training—no LMS required."*
 
 Or:
 
-> *“The fastest way to turn PDFs and slides into real training.”*
+> *"The fastest way to turn PDFs and slides into real training."*
 
 ---
 
@@ -269,7 +311,7 @@ Or:
 
 ---
 
-## Appendix A: Module JSON Schema (MVP Proposal)
+## Appendix A: Module JSON Schema (MVP — Implemented)
 
 Schema goals:
 - Single source of truth for render, review, and export
@@ -369,8 +411,11 @@ Schema goals:
 - `screen.id` unique across module
 - `question` screens must include at least 1 interaction
 - `image.alt_text` required when `image` is present
+- `image_text` screens must include an `image` object
+- Duplicate screen IDs are not permitted (enforced globally)
+- Additional constraints implemented in Zod `superRefine` logic
 
-### A.5 Zod Schema (Starter)
+### A.5 Zod Schema (Implemented — `frontend/src/lib/moduleSchema.ts`)
 
 ```ts
 import { z } from "zod";
@@ -460,48 +505,47 @@ export const moduleSchema = z.object({
 });
 ```
 
-Editor requirements:
-- Form-based review with flags and notes per screen/question
-- Ability to mark inaccurate text/images before publish
+---
+
+## Appendix B: MVP User Flow (Implemented)
+
+1) **Login** — `/login`
+   - Email/password login via Sanctum token auth
+
+2) **Projects** — `/projects`
+   - Project list scoped to authenticated user
+   - "New Project" button
+
+3) **New Project Wizard** — `/projects/new`
+   - Step 1: Title + rights attestation checkbox
+   - Step 2: Upload PDF/DOCX/PPTX (10MB limit) or paste URL
+   - Step 3: Duration, learning objectives, assessment count
+   - Step 4: Review summary → "Generate Training"
+
+4) **Project Detail** — `/projects/:id`
+   - Shows project info, source metadata, module status
+   - Polls during generation; shows error + retry on failure
+   - "Review module" and "Preview" buttons when generated
+
+5) **Review Editor** — `/projects/:id/review`
+   - Two-panel layout: screen list sidebar + editor panel
+   - Module info editing
+   - Per-screen field editing with type-specific interaction editors
+   - Unsplash image picker for image_text screens
+   - Per-screen review flags (add/resolve)
+   - Save changes
+
+6) **WBT Player (Preview)** — `/projects/:id/play`
+   - Cover screen → screens → completion
+   - Interactive questions with feedback
+   - Accordion and click-reveal interactions
+   - Progress bar
+
+7) **Export** — ❌ Deferred to v2
 
 ---
 
-## Appendix B: MVP User Flow (Screens)
-
-1) Login
-- Email/password login
-
-2) Projects
-- Project list
-- Create project
-
-3) New Project Setup
-- Title
-- Rights attestation checkbox
-
-4) Content Input
-- Upload PDF/DOCX/PPTX (10MB limit) or paste URL
-
-5) Generation Controls
-- Duration
-- Learning objectives (user or AI)
-- Assessment count
-
-6) Generate
-- Progress state
-- Output preview summary (title, objectives, screen count)
-
-7) Review Editor (Form-based)
-- Screen list with types
-- Fields for text, images, and interactions
-- Review flags and notes (per screen/question)
-
-8) Export
-- SCORM 1.2 export (static player + module.json)
-
----
-
-## Appendix C: MVP API Endpoints (Draft)
+## Appendix C: MVP API Endpoints (Implemented)
 
 Authentication:
 - `POST /api/auth/login`
@@ -511,18 +555,19 @@ Projects:
 - `GET /api/projects`
 - `POST /api/projects`
 - `GET /api/projects/{id}`
+- `POST /api/projects/{id}/source`
 
 Modules:
 - `POST /api/projects/{id}/module/generate`
 - `GET /api/projects/{id}/module`
-- `PUT /api/projects/{id}/module` (editor updates)
+- `PUT /api/projects/{id}/module`
 - `POST /api/projects/{id}/module/flags`
 
 Media:
 - `GET /api/unsplash/search?q=&page=`
 
-Exports:
-- `POST /api/projects/{id}/scorm`
+Exports (stub only):
+- `POST /api/projects/{id}/scorm` — not implemented
 
-Events (enabled when publishing is implemented):
+Events (deferred):
 - `POST /api/projects/{id}/events`
