@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Anthropic\Client as AnthropicClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -83,9 +84,59 @@ class ProjectSourceController extends Controller
 
     private function extractPdf(string $path): string
     {
-        $parser = new PdfParser();
-        $pdf    = $parser->parseFile($path);
-        return $pdf->getText();
+        try {
+            $parser = new PdfParser();
+            $pdf    = $parser->parseFile($path);
+            $text   = $pdf->getText();
+
+            if (trim($text) !== '') {
+                return $text;
+            }
+
+            // Empty text = likely a scanned or image-only PDF; fall through to Claude
+            Log::info('PDF parsed but returned empty text — falling back to Claude document API');
+        } catch (\Throwable $e) {
+            Log::info("PDF text extraction failed ({$e->getMessage()}) — falling back to Claude document API");
+        }
+
+        return $this->extractPdfViaClaude($path);
+    }
+
+    private function extractPdfViaClaude(string $path): string
+    {
+        $base64  = base64_encode(file_get_contents($path));
+        $client  = new AnthropicClient(apiKey: config('services.anthropic.api_key'));
+        $model   = config('services.anthropic.model', 'claude-sonnet-4-6');
+
+        $response = $client->messages->create(
+            maxTokens: 4096,
+            messages: [[
+                'role'    => 'user',
+                'content' => [
+                    [
+                        'type'   => 'document',
+                        'source' => [
+                            'type'       => 'base64',
+                            'media_type' => 'application/pdf',
+                            'data'       => $base64,
+                        ],
+                    ],
+                    [
+                        'type' => 'text',
+                        'text' => 'Extract all readable text content from this PDF. Return only the extracted text, preserving the structure as much as possible. Do not add any commentary or explanation.',
+                    ],
+                ],
+            ]],
+            model: $model,
+        );
+
+        $text = $response->content[0]->text ?? '';
+
+        if (trim($text) === '') {
+            abort(422, 'Could not extract text from this PDF. The file may be encrypted with a user password. Please use an unprotected PDF or provide the source content another way.');
+        }
+
+        return $text;
     }
 
     private function extractDocx(string $path): string
