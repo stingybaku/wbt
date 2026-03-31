@@ -70,7 +70,9 @@ class GenerationService
         $systemPrompt = <<<SYSTEM
 You are an expert instructional designer. Your task is to convert source content into a structured Web-Based Training (WBT) module.
 
-You MUST respond with a single valid JSON object and nothing else — no explanation, no markdown fences, no commentary before or after. The JSON must strictly follow the schema below.
+You MUST respond with a single valid JSON object and nothing else — no explanation, no markdown fences (no ```), no commentary before or after. The JSON must strictly follow the schema below.
+
+CRITICAL: All string values must be valid JSON strings. Do NOT include raw newlines, tabs, or any control characters inside string values — use \\n for line breaks if needed. Do NOT wrap the response in ```json or any code block.
 
 REQUIRED JSON SCHEMA:
 {
@@ -218,10 +220,24 @@ USER;
 
     private function extractJson(string $raw): array
     {
-        // Strip any accidental markdown fences
-        $cleaned = preg_replace('/^```(?:json)?\s*/m', '', $raw);
-        $cleaned = preg_replace('/```\s*$/m', '', $cleaned);
+        // Strip BOM if present
+        $cleaned = ltrim($raw, "\xEF\xBB\xBF");
+
+        // Strip markdown fences (``` or ```json) at the start and end
+        $cleaned = preg_replace('/^```(?:json)?\s*/i', '', trim($cleaned));
+        $cleaned = preg_replace('/\s*```\s*$/', '', $cleaned);
         $cleaned = trim($cleaned);
+
+        // If the response is wrapped in an outer code block with content after, extract the JSON object/array
+        if (!str_starts_with($cleaned, '{') && !str_starts_with($cleaned, '[')) {
+            if (preg_match('/(\{[\s\S]*\}|\[[\s\S]*\])\s*$/', $cleaned, $m)) {
+                $cleaned = $m[1];
+            }
+        }
+
+        // Remove control characters that are illegal in JSON string values
+        // (preserve tab 0x09, LF 0x0A, CR 0x0D which are valid JSON whitespace)
+        $cleaned = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $cleaned);
 
         $decoded = json_decode($cleaned, true);
 
