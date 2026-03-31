@@ -164,6 +164,16 @@ function CoverScreen({
   );
 }
 
+// ─── Screen type labels ───────────────────────────────────────────────────────
+
+const screenTypeLabel: Record<Screen['type'], string> = {
+  text:         'Read',
+  image_text:   'Visual',
+  accordion:    'Explore',
+  click_reveal: 'Discover',
+  question:     'Knowledge Check',
+};
+
 // ─── Screen renderer ──────────────────────────────────────────────────────────
 
 function ScreenRenderer({
@@ -184,7 +194,6 @@ function ScreenRenderer({
   const [questionReady, setQuestionReady] = useState(screen.type !== 'question');
   const titleRef = useRef<HTMLHeadingElement>(null);
 
-  // Focus the screen title on mount for keyboard/screen reader users
   useEffect(() => {
     titleRef.current?.focus();
   }, []);
@@ -192,53 +201,58 @@ function ScreenRenderer({
   const isFirst = screenIndex === 0;
   const isLast = screenIndex === totalScreens - 1;
 
-  // Find Unsplash attribution for any image on this screen
   const imageAttribution =
     screen.image && attribution.unsplash.find(a => screen.image?.url.includes(a.image_id));
 
   return (
-    <main className="player-content" aria-label={`Screen ${screenIndex + 1} of ${totalScreens}`}>
-      <article className="player-screen">
-        <h2 className="player-screen-title" tabIndex={-1} ref={titleRef}>
-          {screen.title}
-        </h2>
+    <>
+      <div className="player-hero" aria-hidden="true">
+        <div className="player-hero-inner">
+          <span className="player-screen-label">{screenTypeLabel[screen.type]}</span>
+          <h2 className="player-screen-title" tabIndex={-1} ref={titleRef}>
+            {screen.title}
+          </h2>
+        </div>
+      </div>
 
-        {screen.image && screen.type !== 'image_text' && (
-          <figure className="player-figure">
-            <img
-              src={screen.image.url}
-              alt={screen.image.alt_text}
-              className="player-image"
-            />
-            {imageAttribution && (
-              <figcaption className="player-attribution">
-                Photo by{' '}
-                <a href={imageAttribution.url} target="_blank" rel="noopener noreferrer">
-                  {imageAttribution.photographer}
-                </a>{' '}
-                on Unsplash
-              </figcaption>
-            )}
-          </figure>
-        )}
+      <main className="player-content" aria-label={`Screen ${screenIndex + 1} of ${totalScreens}`}>
+        <article className="player-screen">
+          {screen.image && screen.type !== 'image_text' && (
+            <figure className="player-figure">
+              <img
+                src={screen.image.url}
+                alt={screen.image.alt_text}
+                className="player-image"
+              />
+              {imageAttribution && (
+                <figcaption className="player-attribution">
+                  Photo by{' '}
+                  <a href={imageAttribution.url} target="_blank" rel="noopener noreferrer">
+                    {imageAttribution.photographer}
+                  </a>{' '}
+                  on Unsplash
+                </figcaption>
+              )}
+            </figure>
+          )}
 
-        {screen.type === 'text' && <TextScreen screen={screen} />}
-        {screen.type === 'image_text' && (
-          <ImageTextScreen screen={screen} attribution={imageAttribution ?? null} />
-        )}
-        {screen.type === 'accordion' && <AccordionScreen screen={screen} />}
-        {screen.type === 'click_reveal' && <ClickRevealScreen screen={screen} />}
-        {screen.type === 'question' && (
-          <QuestionScreen screen={screen} onReady={() => setQuestionReady(true)} />
-        )}
-      </article>
+          {screen.type === 'text' && <TextScreen screen={screen} />}
+          {screen.type === 'image_text' && (
+            <ImageTextScreen screen={screen} attribution={imageAttribution ?? null} />
+          )}
+          {screen.type === 'accordion' && <AccordionScreen screen={screen} />}
+          {screen.type === 'click_reveal' && <ClickRevealScreen screen={screen} />}
+          {screen.type === 'question' && (
+            <QuestionScreen screen={screen} onReady={() => setQuestionReady(true)} />
+          )}
+        </article>
 
-      <nav className="player-nav" aria-label="Screen navigation">
-        <button
-          onClick={onPrev}
-          disabled={isFirst}
-          className="ghost player-nav-btn"
-          aria-label="Previous screen"
+        <nav className="player-nav" aria-label="Screen navigation">
+          <button
+            onClick={onPrev}
+            disabled={isFirst}
+            className="ghost player-nav-btn"
+            aria-label="Previous screen"
         >
           ← Previous
         </button>
@@ -250,8 +264,9 @@ function ScreenRenderer({
         >
           {isLast ? 'Finish ✓' : 'Next →'}
         </button>
-      </nav>
-    </main>
+        </nav>
+      </main>
+    </>
   );
 }
 
