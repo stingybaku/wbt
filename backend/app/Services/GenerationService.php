@@ -206,7 +206,7 @@ SOURCE CONTENT:
 USER;
 
         $response = $this->client->messages->create(
-            maxTokens: 8192,
+            maxTokens: 16000,
             messages: [['role' => 'user', 'content' => $userPrompt]],
             model: $this->model,
             system: $systemPrompt,

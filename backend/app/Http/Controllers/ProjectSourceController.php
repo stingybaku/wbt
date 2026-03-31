@@ -104,39 +104,75 @@ class ProjectSourceController extends Controller
 
     private function extractPdfViaClaude(string $path): string
     {
-        $base64  = base64_encode(file_get_contents($path));
-        $client  = new AnthropicClient(apiKey: config('services.anthropic.api_key'));
-        $model   = config('services.anthropic.model', 'claude-sonnet-4-6');
+        // Claude accepts a maximum of 100 PDF pages. Trim with qpdf if available.
+        $pdfPath  = $path;
+        $tempPath = null;
 
-        $response = $client->messages->create(
-            maxTokens: 4096,
-            messages: [[
-                'role'    => 'user',
-                'content' => [
-                    [
-                        'type'   => 'document',
-                        'source' => [
-                            'type'       => 'base64',
-                            'media_type' => 'application/pdf',
-                            'data'       => $base64,
-                        ],
-                    ],
-                    [
-                        'type' => 'text',
-                        'text' => 'Extract all readable text content from this PDF. Return only the extracted text, preserving the structure as much as possible. Do not add any commentary or explanation.',
-                    ],
-                ],
-            ]],
-            model: $model,
-        );
+        if ($this->commandExists('qpdf')) {
+            $tmp      = tempnam(sys_get_temp_dir(), 'wbt_pdf_') . '.pdf';
+            $src      = escapeshellarg($path);
+            $dst      = escapeshellarg($tmp);
+            exec("qpdf {$src} --pages . 1-100 -- {$dst} 2>/dev/null", $out, $code);
 
-        $text = $response->content[0]->text ?? '';
-
-        if (trim($text) === '') {
-            abort(422, 'Could not extract text from this PDF. The file may be encrypted with a user password. Please use an unprotected PDF or provide the source content another way.');
+            if ($code === 0 && file_exists($tmp) && filesize($tmp) > 0) {
+                $pdfPath  = $tmp;
+                $tempPath = $tmp;
+                Log::info('PDF trimmed to 100 pages via qpdf before Claude extraction');
+            } else {
+                @unlink($tmp);
+            }
         }
 
-        return $text;
+        try {
+            $base64  = base64_encode(file_get_contents($pdfPath));
+            $client  = new AnthropicClient(apiKey: config('services.anthropic.api_key'));
+            $model   = config('services.anthropic.model', 'claude-sonnet-4-6');
+
+            $response = $client->messages->create(
+                maxTokens: 4096,
+                messages: [[
+                    'role'    => 'user',
+                    'content' => [
+                        [
+                            'type'   => 'document',
+                            'source' => [
+                                'type'       => 'base64',
+                                'media_type' => 'application/pdf',
+                                'data'       => $base64,
+                            ],
+                        ],
+                        [
+                            'type' => 'text',
+                            'text' => 'Extract all readable text content from this PDF. Return only the extracted text, preserving the structure as much as possible. Do not add any commentary or explanation.',
+                        ],
+                    ],
+                ]],
+                model: $model,
+            );
+
+            $text = $response->content[0]->text ?? '';
+
+            if (trim($text) === '') {
+                abort(422, 'Could not extract text from this PDF. The file may be encrypted with a user password. Please use an unprotected PDF or provide the source content another way.');
+            }
+
+            return $text;
+        } catch (\Anthropic\Core\Exceptions\BadRequestException $e) {
+            if (str_contains($e->getMessage(), 'maximum of 100 PDF pages')) {
+                abort(422, 'This PDF exceeds 100 pages and qpdf is not available to trim it. Please split the document or provide a shorter version (100 pages or fewer).');
+            }
+            throw $e;
+        } finally {
+            if ($tempPath && file_exists($tempPath)) {
+                @unlink($tempPath);
+            }
+        }
+    }
+
+    private function commandExists(string $command): bool
+    {
+        exec('which ' . escapeshellarg($command) . ' 2>/dev/null', $out, $code);
+        return $code === 0;
     }
 
     private function extractDocx(string $path): string
