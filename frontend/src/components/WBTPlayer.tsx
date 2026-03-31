@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { fetchModule, fetchProject } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -206,7 +206,11 @@ function ScreenRenderer({
 
   return (
     <>
-      <div className="player-hero" aria-hidden="true">
+      <div
+        className={`player-hero${screen.image ? ' player-hero--image' : ''}`}
+        style={screen.image ? { '--hero-img': `url(${screen.image.url})` } as React.CSSProperties : undefined}
+        aria-hidden="true"
+      >
         <div className="player-hero-inner">
           <span className="player-screen-label">{screenTypeLabel[screen.type]}</span>
           <h2 className="player-screen-title" tabIndex={-1} ref={titleRef}>
