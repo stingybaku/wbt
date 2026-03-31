@@ -44,6 +44,7 @@ class GenerationJob implements ShouldQueue
             );
 
             $moduleJson = $this->enrichImages($moduleJson);
+            $moduleJson = $this->assignLayouts($moduleJson);
 
             $module->update([
                 'module_json'      => $moduleJson,
@@ -118,6 +119,19 @@ class GenerationJob implements ShouldQueue
                 return true;
             })
         );
+
+        return $moduleJson;
+    }
+
+    private function assignLayouts(array $moduleJson): array
+    {
+        $layouts = ['top', 'bottom', 'left', 'right'];
+
+        foreach ($moduleJson['screens'] as &$screen) {
+            if ($screen['type'] === 'image_text' && empty($screen['layout'])) {
+                $screen['layout'] = $layouts[array_rand($layouts)];
+            }
+        }
 
         return $moduleJson;
     }

@@ -203,8 +203,8 @@ function ScreenRenderer({
           {screen.title}
         </h2>
 
-        {screen.image && (
-          <figure className={`player-figure ${screen.type === 'image_text' ? 'player-figure--featured' : ''}`}>
+        {screen.image && screen.type !== 'image_text' && (
+          <figure className="player-figure">
             <img
               src={screen.image.url}
               alt={screen.image.alt_text}
@@ -223,7 +223,9 @@ function ScreenRenderer({
         )}
 
         {screen.type === 'text' && <TextScreen screen={screen} />}
-        {screen.type === 'image_text' && <ImageTextScreen screen={screen} />}
+        {screen.type === 'image_text' && (
+          <ImageTextScreen screen={screen} attribution={imageAttribution ?? null} />
+        )}
         {screen.type === 'accordion' && <AccordionScreen screen={screen} />}
         {screen.type === 'click_reveal' && <ClickRevealScreen screen={screen} />}
         {screen.type === 'question' && (
@@ -261,8 +263,48 @@ function TextScreen({ screen }: { screen: Screen }) {
 
 // ─── Image + text screen ──────────────────────────────────────────────────────
 
-function ImageTextScreen({ screen }: { screen: Screen }) {
-  return <p className="player-body">{screen.body}</p>;
+function ImageTextScreen({
+  screen,
+  attribution,
+}: {
+  screen: Screen;
+  attribution: Module['attribution']['unsplash'][number] | null;
+}) {
+  const layout = screen.layout ?? 'top';
+
+  const imageEl = screen.image ? (
+    <figure className="player-figure">
+      <img src={screen.image.url} alt={screen.image.alt_text} className="player-image" />
+      {attribution && (
+        <figcaption className="player-attribution">
+          Photo by{' '}
+          <a href={attribution.url} target="_blank" rel="noopener noreferrer">
+            {attribution.photographer}
+          </a>{' '}
+          on Unsplash
+        </figcaption>
+      )}
+    </figure>
+  ) : null;
+
+  const textEl = <p className="player-body">{screen.body}</p>;
+
+  if (layout === 'left' || layout === 'right') {
+    return (
+      <div className={`player-image-text player-image-text--${layout}`}>
+        {layout === 'left' ? imageEl : textEl}
+        {layout === 'left' ? textEl : imageEl}
+      </div>
+    );
+  }
+
+  // top (default) or bottom
+  return (
+    <div className={`player-image-text player-image-text--${layout}`}>
+      {layout === 'bottom' ? textEl : imageEl}
+      {layout === 'bottom' ? imageEl : textEl}
+    </div>
+  );
 }
 
 // ─── Accordion screen ─────────────────────────────────────────────────────────
