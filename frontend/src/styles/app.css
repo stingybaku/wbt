@@ -895,6 +895,54 @@ textarea:focus {
   border: 1px solid #e5e7eb;
 }
 
+/* ── image_text layout variants ───────────────────────────────────────────── */
+
+.player-image-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* top: image above text (default — same as flex-direction: column) */
+.player-image-text--top {}
+
+/* bottom: text above image */
+.player-image-text--bottom {
+  flex-direction: column-reverse;
+}
+
+/* left: image left, text right */
+.player-image-text--left,
+.player-image-text--right {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.player-image-text--left .player-figure,
+.player-image-text--right .player-figure {
+  flex: 0 0 45%;
+  min-width: 0;
+}
+
+.player-image-text--left .player-figure .player-image,
+.player-image-text--right .player-figure .player-image {
+  max-height: 260px;
+}
+
+.player-image-text--left .player-body,
+.player-image-text--right .player-body {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 600px) {
+  .player-image-text--left,
+  .player-image-text--right {
+    flex-direction: column;
+  }
+}
+
 .player-attribution {
   font-size: 0.78rem;
   color: #9ca3af;

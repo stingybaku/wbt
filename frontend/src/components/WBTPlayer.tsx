@@ -203,6 +203,25 @@ function ScreenRenderer({
           {screen.title}
         </h2>
 
+        {screen.image && screen.type !== 'image_text' && (
+          <figure className="player-figure">
+            <img
+              src={screen.image.url}
+              alt={screen.image.alt_text}
+              className="player-image"
+            />
+            {imageAttribution && (
+              <figcaption className="player-attribution">
+                Photo by{' '}
+                <a href={imageAttribution.url} target="_blank" rel="noopener noreferrer">
+                  {imageAttribution.photographer}
+                </a>{' '}
+                on Unsplash
+              </figcaption>
+            )}
+          </figure>
+        )}
+
         {screen.type === 'text' && <TextScreen screen={screen} />}
         {screen.type === 'image_text' && (
           <ImageTextScreen screen={screen} attribution={imageAttribution ?? null} />
@@ -251,28 +270,40 @@ function ImageTextScreen({
   screen: Screen;
   attribution: Module['attribution']['unsplash'][number] | null;
 }) {
-  return (
-    <>
-      {screen.image && (
-        <figure className="player-figure">
-          <img
-            src={screen.image.url}
-            alt={screen.image.alt_text}
-            className="player-image"
-          />
-          {attribution && (
-            <figcaption className="player-attribution">
-              Photo by{' '}
-              <a href={attribution.url} target="_blank" rel="noopener noreferrer">
-                {attribution.photographer}
-              </a>{' '}
-              on Unsplash
-            </figcaption>
-          )}
-        </figure>
+  const layout = screen.layout ?? 'top';
+
+  const imageEl = screen.image ? (
+    <figure className="player-figure">
+      <img src={screen.image.url} alt={screen.image.alt_text} className="player-image" />
+      {attribution && (
+        <figcaption className="player-attribution">
+          Photo by{' '}
+          <a href={attribution.url} target="_blank" rel="noopener noreferrer">
+            {attribution.photographer}
+          </a>{' '}
+          on Unsplash
+        </figcaption>
       )}
-      <p className="player-body">{screen.body}</p>
-    </>
+    </figure>
+  ) : null;
+
+  const textEl = <p className="player-body">{screen.body}</p>;
+
+  if (layout === 'left' || layout === 'right') {
+    return (
+      <div className={`player-image-text player-image-text--${layout}`}>
+        {layout === 'left' ? imageEl : textEl}
+        {layout === 'left' ? textEl : imageEl}
+      </div>
+    );
+  }
+
+  // top (default) or bottom
+  return (
+    <div className={`player-image-text player-image-text--${layout}`}>
+      {layout === 'bottom' ? textEl : imageEl}
+      {layout === 'bottom' ? imageEl : textEl}
+    </div>
   );
 }
 

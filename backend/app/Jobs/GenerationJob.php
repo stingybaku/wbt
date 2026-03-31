@@ -44,6 +44,7 @@ class GenerationJob implements ShouldQueue
             );
 
             $moduleJson = $this->enrichImages($moduleJson);
+            $moduleJson = $this->assignLayouts($moduleJson);
 
             $module->update([
                 'module_json'      => $moduleJson,
@@ -67,11 +68,14 @@ class GenerationJob implements ShouldQueue
         }
 
         foreach ($moduleJson['screens'] as &$screen) {
-            if ($screen['type'] !== 'image_text') {
+            // Skip screens that already have a real (non-placeholder) image
+            $existingUrl = $screen['image']['url'] ?? '';
+            if ($existingUrl && !str_contains($existingUrl, 'placeholder')) {
                 continue;
             }
 
-            $query = $screen['title'] ?? '';
+            // Use screen title as query; fall back to screen type for generic imagery
+            $query = trim($screen['title'] ?? '');
             if (!$query) {
                 continue;
             }
@@ -115,6 +119,19 @@ class GenerationJob implements ShouldQueue
                 return true;
             })
         );
+
+        return $moduleJson;
+    }
+
+    private function assignLayouts(array $moduleJson): array
+    {
+        $layouts = ['top', 'bottom', 'left', 'right'];
+
+        foreach ($moduleJson['screens'] as &$screen) {
+            if ($screen['type'] === 'image_text' && empty($screen['layout'])) {
+                $screen['layout'] = $layouts[array_rand($layouts)];
+            }
+        }
 
         return $moduleJson;
     }

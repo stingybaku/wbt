@@ -94,6 +94,8 @@ REQUIRED JSON SCHEMA:
   "review_flags": []
 }
 
+IMPORTANT IMAGE RULE: Every screen of every type MUST include an image object. Never use null for the image field. Always set image to { "url": "https://placeholder.wbtforge.dev/800x450", "alt_text": string } with a descriptive alt_text relevant to the screen content.
+
 SCREEN TYPES (use all five types, distributed across the module):
 
 1. text screen:
@@ -102,12 +104,12 @@ SCREEN TYPES (use all five types, distributed across the module):
   "type": "text",
   "title": string,
   "body": string,
-  "image": null,
+  "image": { "url": "https://placeholder.wbtforge.dev/800x450", "alt_text": string },
   "interactions": [],
-  "accessibility": { "alt_text": null }
+  "accessibility": { "alt_text": string }
 }
 
-2. image_text screen (image field MUST NOT be null):
+2. image_text screen (image is the visual focus):
 {
   "id": "scr_002",
   "type": "image_text",
@@ -124,7 +126,7 @@ SCREEN TYPES (use all five types, distributed across the module):
   "type": "accordion",
   "title": string,
   "body": string,
-  "image": null,
+  "image": { "url": "https://placeholder.wbtforge.dev/800x450", "alt_text": string },
   "interactions": [
     {
       "kind": "accordion",
@@ -134,7 +136,7 @@ SCREEN TYPES (use all five types, distributed across the module):
       ]
     }
   ],
-  "accessibility": { "alt_text": null }
+  "accessibility": { "alt_text": string }
 }
 
 4. click_reveal screen:
@@ -143,7 +145,7 @@ SCREEN TYPES (use all five types, distributed across the module):
   "type": "click_reveal",
   "title": string,
   "body": string,
-  "image": null,
+  "image": { "url": "https://placeholder.wbtforge.dev/800x450", "alt_text": string },
   "interactions": [
     {
       "kind": "click_reveal",
@@ -153,7 +155,7 @@ SCREEN TYPES (use all five types, distributed across the module):
       ]
     }
   ],
-  "accessibility": { "alt_text": null }
+  "accessibility": { "alt_text": string }
 }
 
 5. question screen (MUST have at least 1 interaction):
@@ -162,7 +164,7 @@ SCREEN TYPES (use all five types, distributed across the module):
   "type": "question",
   "title": string,
   "body": string,
-  "image": null,
+  "image": { "url": "https://placeholder.wbtforge.dev/800x450", "alt_text": string },
   "interactions": [
     {
       "kind": "single_choice",
@@ -178,14 +180,14 @@ SCREEN TYPES (use all five types, distributed across the module):
       }
     }
   ],
-  "accessibility": { "alt_text": null }
+  "accessibility": { "alt_text": string }
 }
 
 VALIDATION RULES:
 - All screen IDs must be unique
 - Minimum 10 screens total
+- Every screen MUST have a non-null image object with a descriptive alt_text
 - question screens MUST include at least 1 interaction
-- image_text screens MUST have a non-null image object
 - accordion and click_reveal interactions MUST have at least 2 items
 - single_choice and multi_choice interactions MUST have at least 2 choices
 SYSTEM;
@@ -258,8 +260,8 @@ USER;
                 throw new \RuntimeException("Screen {$idx} (question) must have at least 1 interaction");
             }
 
-            if ($screen['type'] === 'image_text' && empty($screen['image'])) {
-                throw new \RuntimeException("Screen {$idx} (image_text) must have a non-null image object");
+            if (empty($screen['image'])) {
+                throw new \RuntimeException("Screen {$idx} ({$screen['type']}) must have a non-null image object");
             }
         }
     }

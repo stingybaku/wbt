@@ -3,7 +3,8 @@ import { Link, useParams } from 'react-router-dom';
 import { fetchProject, fetchModule, updateModule } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import type { Project, ModuleRecord } from '../lib/types';
-import type { Module, Screen, Interaction } from '../lib/moduleSchema';
+import type { Module, Screen, Interaction, ImageTextLayout } from '../lib/moduleSchema';
+import { imageTextLayouts } from '../lib/moduleSchema';
 import { UnsplashPicker, type PickedImage } from './UnsplashPicker';
 
 // ─── Page wrapper ─────────────────────────────────────────────────────────────
@@ -300,7 +301,7 @@ function ScreenEditor({
     interaction0 &&
     (interaction0.kind === 'single_choice' || interaction0.kind === 'multi_choice');
 
-  const showImageSection = screen.type === 'image_text';
+  const showImageSection = true;
 
   return (
     <div className="editor-panel">
@@ -342,6 +343,26 @@ function ScreenEditor({
           }}
         />
       </div>
+
+      {screen.type === 'image_text' && (
+        <div className="field-group">
+          <label htmlFor={`screen-layout-${screenIndex}`}>Layout</label>
+          <select
+            id={`screen-layout-${screenIndex}`}
+            value={screen.layout ?? 'top'}
+            onChange={e => {
+              const v = e.target.value as ImageTextLayout;
+              updateScreen(s => { s.layout = v; });
+            }}
+          >
+            {imageTextLayouts.map(l => (
+              <option key={l} value={l}>
+                {l === 'top' ? 'Image top' : l === 'bottom' ? 'Image bottom' : l === 'left' ? 'Image left, text right' : 'Text left, image right'}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {showImageSection && (
         <div className="field-group">

@@ -35,6 +35,9 @@ const interactionSchema = z.discriminatedUnion('kind', [
   }),
 ]);
 
+export const imageTextLayouts = ['top', 'bottom', 'left', 'right'] as const;
+export type ImageTextLayout = typeof imageTextLayouts[number];
+
 const screenSchema = z.object({
   id: z.string(),
   type: z.enum(['text', 'image_text', 'accordion', 'click_reveal', 'question']),
@@ -46,6 +49,7 @@ const screenSchema = z.object({
       alt_text: z.string(),
     })
     .nullable(),
+  layout: z.enum(imageTextLayouts).optional(),
   interactions: z.array(interactionSchema),
   accessibility: z.object({ alt_text: z.string().nullable() }),
 });
