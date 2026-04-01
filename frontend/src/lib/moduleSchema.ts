@@ -31,7 +31,11 @@ const interactionSchema = z.discriminatedUnion('kind', [
   }),
   z.object({
     kind: z.literal('click_reveal'),
-    items: z.array(z.object({ title: z.string(), body: z.string() })).min(2),
+    items: z.array(z.object({
+      title: z.string(),
+      body: z.string(),
+      image: z.object({ url: z.string().url(), alt_text: z.string() }).nullable().optional(),
+    })).min(2),
   }),
 ]);
 

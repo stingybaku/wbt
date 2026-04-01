@@ -1,9 +1,59 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { fetchModule, fetchProject } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import type { ModuleRecord, Project } from '../lib/types';
 import type { Module, Screen, Interaction } from '../lib/moduleSchema';
+
+// ─── Entry direction ──────────────────────────────────────────────────────────
+
+type EntryDir = 'up' | 'left' | 'right';
+const DIRS: EntryDir[] = ['up', 'left', 'right'];
+function randomDir(): EntryDir { return DIRS[Math.floor(Math.random() * DIRS.length)]; }
+
+// ─── Rich text renderer ───────────────────────────────────────────────────────
+
+function RichText({ text, className }: { text: string; className?: string }) {
+  const lines = text.split('\n');
+  const nodes: React.ReactNode[] = [];
+  let olItems: string[] = [];
+  let ulItems: string[] = [];
+
+  function flushOl() {
+    if (olItems.length) {
+      nodes.push(<ol key={nodes.length} className="player-list player-list--ol">{olItems.map((t, i) => <li key={i}>{t}</li>)}</ol>);
+      olItems = [];
+    }
+  }
+  function flushUl() {
+    if (ulItems.length) {
+      nodes.push(<ul key={nodes.length} className="player-list player-list--ul">{ulItems.map((t, i) => <li key={i}>{t}</li>)}</ul>);
+      ulItems = [];
+    }
+  }
+
+  for (const raw of lines) {
+    const line = raw.trimStart();
+    const olMatch = line.match(/^(\d+)\.\s+(.*)/);
+    const ulMatch = line.match(/^[-•*]\s+(.*)/);
+
+    if (olMatch) {
+      flushUl();
+      olItems.push(olMatch[2]);
+    } else if (ulMatch) {
+      flushOl();
+      ulItems.push(ulMatch[1]);
+    } else {
+      flushOl();
+      flushUl();
+      if (line) nodes.push(<p key={nodes.length} className={className ?? 'player-body'}>{line}</p>);
+    }
+  }
+  flushOl();
+  flushUl();
+
+  return <>{nodes}</>;
+}
 
 // ─── Page wrapper ─────────────────────────────────────────────────────────────
 
@@ -94,18 +144,25 @@ function WBTPlayer({ module, projectId }: { module: Module; projectId: string })
 
   return (
     <div className="player-shell">
-      <header className="player-topbar">
-        <span className="player-title">{module.meta.title}</span>
-        <span className="player-progress">
-          {screenIndex + 1} / {screens.length}
-        </span>
-      </header>
+      <div className="player-header">
+        <header className="player-topbar">
+          <span className="player-title">{module.meta.title}</span>
+          <div className="player-topbar-right">
+            <span className="player-progress">
+              {screenIndex + 1} / {screens.length}
+            </span>
+            <Link to={`/projects/${projectId}`} className="player-exit-btn" aria-label="Exit training">
+              ✕
+            </Link>
+          </div>
+        </header>
 
-      <div className="player-progress-bar-track">
-        <div
-          className="player-progress-bar-fill"
-          style={{ width: `${((screenIndex + 1) / screens.length) * 100}%` }}
-        />
+        <div className="player-progress-bar-track">
+          <div
+            className="player-progress-bar-fill"
+            style={{ width: `${((screenIndex + 1) / screens.length) * 100}%` }}
+          />
+        </div>
       </div>
 
       <ScreenRenderer
@@ -193,6 +250,8 @@ function ScreenRenderer({
 }) {
   const [questionReady, setQuestionReady] = useState(screen.type !== 'question');
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const heroDir = useMemo(randomDir, []);
+  const contentDir = useMemo(randomDir, []);
 
   useEffect(() => {
     titleRef.current?.focus();
@@ -207,7 +266,7 @@ function ScreenRenderer({
   return (
     <>
       <div
-        className={`player-hero${screen.image ? ' player-hero--image' : ''}`}
+        className={`player-hero player-hero--enter-${heroDir}${screen.image ? ' player-hero--image' : ''}`}
         style={screen.image ? { '--hero-img': `url(${screen.image.url})` } as React.CSSProperties : undefined}
         aria-hidden="true"
       >
@@ -220,7 +279,7 @@ function ScreenRenderer({
       </div>
 
       <main className="player-content" aria-label={`Screen ${screenIndex + 1} of ${totalScreens}`}>
-        <article className="player-screen">
+        <article className={`player-screen player-screen--enter-${contentDir}`}>
           {screen.image && screen.type !== 'image_text' && (
             <figure className="player-figure">
               <img
@@ -250,13 +309,14 @@ function ScreenRenderer({
             <QuestionScreen screen={screen} onReady={() => setQuestionReady(true)} />
           )}
         </article>
+      </main>
 
-        <nav className="player-nav" aria-label="Screen navigation">
-          <button
-            onClick={onPrev}
-            disabled={isFirst}
-            className="ghost player-nav-btn"
-            aria-label="Previous screen"
+      <nav className="player-nav" aria-label="Screen navigation">
+        <button
+          onClick={onPrev}
+          disabled={isFirst}
+          className="ghost player-nav-btn"
+          aria-label="Previous screen"
         >
           ← Previous
         </button>
@@ -268,8 +328,7 @@ function ScreenRenderer({
         >
           {isLast ? 'Finish ✓' : 'Next →'}
         </button>
-        </nav>
-      </main>
+      </nav>
     </>
   );
 }
@@ -277,7 +336,7 @@ function ScreenRenderer({
 // ─── Text screen ──────────────────────────────────────────────────────────────
 
 function TextScreen({ screen }: { screen: Screen }) {
-  return <p className="player-body">{screen.body}</p>;
+  return <RichText text={screen.body} />;
 }
 
 // ─── Image + text screen ──────────────────────────────────────────────────────
@@ -306,7 +365,7 @@ function ImageTextScreen({
     </figure>
   ) : null;
 
-  const textEl = <p className="player-body">{screen.body}</p>;
+  const textEl = <div className="player-image-text-body"><RichText text={screen.body} /></div>;
 
   if (layout === 'left' || layout === 'right') {
     return (
@@ -332,7 +391,7 @@ function AccordionScreen({ screen }: { screen: Screen }) {
   const [openItems, setOpenItems] = useState<Set<number>>(new Set());
 
   const interaction = screen.interactions[0];
-  if (!interaction || interaction.kind !== 'accordion') return <p className="player-body">{screen.body}</p>;
+  if (!interaction || interaction.kind !== 'accordion') return <RichText text={screen.body} />;
 
   function toggle(i: number) {
     setOpenItems(prev => {
@@ -344,7 +403,7 @@ function AccordionScreen({ screen }: { screen: Screen }) {
 
   return (
     <>
-      {screen.body && <p className="player-body">{screen.body}</p>}
+      {screen.body && <RichText text={screen.body} />}
       <div className="player-accordion" role="list">
         {interaction.items.map((item, i) => {
           const isOpen = openItems.has(i);
@@ -363,7 +422,7 @@ function AccordionScreen({ screen }: { screen: Screen }) {
               </button>
               {isOpen && (
                 <div className="player-accordion-body">
-                  {item.body}
+                  <RichText text={item.body} className="player-accordion-body-text" />
                 </div>
               )}
             </div>
@@ -376,42 +435,100 @@ function AccordionScreen({ screen }: { screen: Screen }) {
 
 // ─── Click-reveal screen ──────────────────────────────────────────────────────
 
+const REVEAL_GRADIENTS = [
+  'linear-gradient(135deg, #ff5d34 0%, #f10b1b 100%)',
+  'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  'linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)',
+  'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+  'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+  'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+];
+
 function ClickRevealScreen({ screen }: { screen: Screen }) {
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
+  const [activeItem, setActiveItem] = useState<number | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const triggerRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const interaction = screen.interactions[0];
-  if (!interaction || interaction.kind !== 'click_reveal') return <p className="player-body">{screen.body}</p>;
+  if (!interaction || interaction.kind !== 'click_reveal') return <RichText text={screen.body} />;
 
-  function reveal(i: number) {
+  function open(i: number) {
+    setActiveItem(i);
     setRevealed(prev => new Set(prev).add(i));
   }
 
+  function close() {
+    const idx = activeItem;
+    setActiveItem(null);
+    // return focus to the card that opened the modal
+    setTimeout(() => triggerRefs.current[idx!]?.focus(), 0);
+  }
+
+  useEffect(() => {
+    if (activeItem === null) return;
+    modalRef.current?.focus();
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') close(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [activeItem]);
+
+  const activeData = activeItem !== null ? interaction.items[activeItem] : null;
+
   return (
     <>
-      {screen.body && <p className="player-body">{screen.body}</p>}
-      <div className="player-reveal-grid">
+      {screen.body && <RichText text={screen.body} />}
+
+      <div className="reveal-grid">
         {interaction.items.map((item, i) => {
-          const isRevealed = revealed.has(i);
+          const isDone = revealed.has(i);
+          const hasImage = !!item.image?.url;
           return (
-            <div key={i} className={`player-reveal-item ${isRevealed ? 'revealed' : ''}`}>
-              <button
-                type="button"
-                className="player-reveal-trigger"
-                onClick={() => reveal(i)}
-                aria-expanded={isRevealed}
-                disabled={isRevealed}
-              >
-                {item.title}
-              </button>
-              {isRevealed && (
-                <p className="player-reveal-body" role="region" aria-label={item.title}>
-                  {item.body}
-                </p>
-              )}
-            </div>
+            <button
+              key={i}
+              ref={el => { triggerRefs.current[i] = el; }}
+              type="button"
+              className={`reveal-card${hasImage ? ' reveal-card--image' : ''}${isDone ? ' reveal-card--done' : ''}`}
+              style={
+                hasImage
+                  ? { '--reveal-img': `url(${item.image!.url})` } as React.CSSProperties
+                  : { background: REVEAL_GRADIENTS[i % REVEAL_GRADIENTS.length] } as React.CSSProperties
+              }
+              onClick={() => open(i)}
+              aria-label={`${item.title}${isDone ? ' — viewed' : ''}`}
+            >
+              {isDone && <span className="reveal-card-check" aria-hidden="true">✓</span>}
+              <span className="reveal-card-title">{item.title}</span>
+            </button>
           );
         })}
       </div>
+
+      {activeData && (
+        <div
+          className="reveal-modal-backdrop"
+          role="presentation"
+          onClick={close}
+        >
+          <div
+            ref={modalRef}
+            className="reveal-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={activeData.title}
+            tabIndex={-1}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="reveal-modal-header">
+              <h3 className="reveal-modal-title">{activeData.title}</h3>
+              <button type="button" className="reveal-modal-close" onClick={close} aria-label="Close">✕</button>
+            </div>
+            <div className="reveal-modal-body">
+              <RichText text={activeData.body} />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -433,7 +550,7 @@ function QuestionScreen({
   const [isCorrect, setIsCorrect] = useState(false);
   const feedbackRef = useRef<HTMLDivElement>(null);
 
-  if (!interaction) return <p className="player-body">{screen.body}</p>;
+  if (!interaction) return <RichText text={screen.body} />;
 
   const isSingle = interaction.kind === 'single_choice';
 
@@ -463,7 +580,7 @@ function QuestionScreen({
 
   return (
     <>
-      {screen.body && <p className="player-body">{screen.body}</p>}
+      {screen.body && <RichText text={screen.body} />}
 
       <fieldset className="player-choices" disabled={submitted}>
         <legend className="player-question-prompt">{interaction.prompt}</legend>
