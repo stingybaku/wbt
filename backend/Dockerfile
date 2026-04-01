@@ -1,8 +1,21 @@
 FROM php:8.3-cli-alpine AS vendor
 WORKDIR /app
 
-RUN apk add --no-cache git unzip icu-dev libzip-dev \
-    && docker-php-ext-install intl zip
+RUN apk add --no-cache \
+        git unzip \
+        icu-dev \
+        libzip-dev \
+        oniguruma-dev \
+        libxml2-dev \
+    && docker-php-ext-install \
+        intl \
+        zip \
+        mbstring \
+        xml \
+        dom \
+        bcmath \
+        pdo \
+        pcntl
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -25,8 +38,24 @@ RUN npm run build
 FROM php:8.3-cli-alpine
 WORKDIR /app
 
-RUN apk add --no-cache bash postgresql-libs postgresql-dev icu-dev libzip-dev qpdf \
-    && docker-php-ext-install intl zip pdo pdo_pgsql
+RUN apk add --no-cache \
+        bash \
+        postgresql-libs postgresql-dev \
+        icu-dev \
+        libzip-dev \
+        oniguruma-dev \
+        libxml2-dev \
+        qpdf \
+    && docker-php-ext-install \
+        intl \
+        zip \
+        mbstring \
+        xml \
+        dom \
+        bcmath \
+        pdo \
+        pdo_pgsql \
+        pcntl
 
 COPY backend/. ./
 COPY --from=vendor /app/vendor ./vendor
