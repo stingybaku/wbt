@@ -152,8 +152,8 @@ SCREEN TYPES (use all five types, distributed across the module):
     {
       "kind": "click_reveal",
       "items": [
-        { "title": string, "body": string },
-        { "title": string, "body": string }
+        { "title": string, "body": string, "image": { "url": "https://placeholder.wbtforge.dev/800x450", "alt_text": string } },
+        { "title": string, "body": string, "image": { "url": "https://placeholder.wbtforge.dev/800x450", "alt_text": string } }
       ]
     }
   ],
@@ -242,7 +242,9 @@ USER;
         $decoded = json_decode($cleaned, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new \RuntimeException("JSON parse failed: " . json_last_error_msg() . "\nRaw (first 500 chars): " . substr($raw, 0, 500));
+            // Strip control characters from the preview so it is safe to log / embed in JSON
+            $preview = preg_replace('/[\x00-\x1F\x7F]/', ' ', substr($raw, 0, 500));
+            throw new \RuntimeException("JSON parse failed: " . json_last_error_msg() . " | Raw (first 500): " . $preview);
         }
 
         return $decoded;

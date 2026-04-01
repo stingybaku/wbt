@@ -64,8 +64,14 @@ class GenerationJob implements ShouldQueue
         $accessKey = config('services.unsplash.access_key');
 
         if (!$accessKey) {
+            Log::warning("Image enrichment skipped: UNSPLASH_ACCESS_KEY is not configured.");
             return $moduleJson;
         }
+
+        $attempted = 0;
+        $succeeded = 0;
+        $skippedNoResults = 0;
+        $skippedError = 0;
 
         foreach ($moduleJson['screens'] as &$screen) {
             // Skip screens that already have a real (non-placeholder) image
@@ -80,6 +86,7 @@ class GenerationJob implements ShouldQueue
                 continue;
             }
 
+            $attempted++;
             try {
                 $res = Http::timeout(8)->get('https://api.unsplash.com/search/photos', [
                     'query'     => $query,
@@ -89,6 +96,7 @@ class GenerationJob implements ShouldQueue
 
                 $results = $res->json('results', []);
                 if (empty($results)) {
+                    $skippedNoResults++;
                     continue;
                 }
 
@@ -105,10 +113,72 @@ class GenerationJob implements ShouldQueue
                     'url'          => $photo['links']['html'],
                     'license'      => 'Unsplash',
                 ];
+                $succeeded++;
             } catch (\Throwable $e) {
+                $skippedError++;
                 Log::warning("Image enrichment failed for screen {$screen['id']}: " . $e->getMessage());
             }
         }
+
+        // Enrich click_reveal item images
+        foreach ($moduleJson['screens'] as &$screen) {
+            if ($screen['type'] !== 'click_reveal') continue;
+
+            foreach ($screen['interactions'] as &$interaction) {
+                if (($interaction['kind'] ?? '') !== 'click_reveal') continue;
+
+                foreach ($interaction['items'] as &$item) {
+                    $existingUrl = $item['image']['url'] ?? '';
+                    if ($existingUrl && !str_contains($existingUrl, 'placeholder')) {
+                        continue;
+                    }
+
+                    $query = trim($item['title'] ?? '');
+                    if (!$query) continue;
+
+                    $attempted++;
+                    try {
+                        $res = Http::timeout(8)->get('https://api.unsplash.com/search/photos', [
+                            'query'     => $query,
+                            'per_page'  => 1,
+                            'client_id' => $accessKey,
+                        ]);
+
+                        $results = $res->json('results', []);
+                        if (empty($results)) {
+                            $skippedNoResults++;
+                            continue;
+                        }
+
+                        $photo = $results[0];
+                        $item['image'] = [
+                            'url'      => $photo['urls']['regular'],
+                            'alt_text' => $photo['alt_description'] ?? $photo['description'] ?? $query,
+                        ];
+
+                        $moduleJson['attribution']['unsplash'][] = [
+                            'image_id'     => $photo['id'],
+                            'photographer' => $photo['user']['name'],
+                            'url'          => $photo['links']['html'],
+                            'license'      => 'Unsplash',
+                        ];
+                        $succeeded++;
+                    } catch (\Throwable $e) {
+                        $skippedError++;
+                        Log::warning("Image enrichment failed for reveal item '{$query}': " . $e->getMessage());
+                    }
+                }
+                unset($item);
+            }
+            unset($interaction);
+        }
+        unset($screen);
+
+        Log::info("Image enrichment complete for project {$this->projectId}: " .
+            "{$succeeded}/{$attempted} succeeded, " .
+            "{$skippedNoResults} no results, " .
+            "{$skippedError} errors."
+        );
 
         // Deduplicate attribution by image_id
         $seen = [];
