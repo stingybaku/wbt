@@ -4,13 +4,13 @@
 **WBT Forge** (working title)
 
 ## Document Status
-MVP Implemented — `feature/finalize-schema`
+Post-MVP — Active Development
 
 ## Author
 Julio (Product / Engineering)
 
 ## Last Updated
-2026-03-30
+2026-03-31
 
 ---
 
@@ -63,24 +63,21 @@ Users need a tool that:
 - Convert content → draft WBT in under 5 minutes
 - Clear, validated, editable output (JSON-driven)
 - AI-generated content feels accurate, engaging, and visually appealing
-- SCORM export imports cleanly into SCORM Cloud
+- Invite viewers to access the course without an LMS
 
 ### Success Metrics
 - Time to first generated draft module
 - % of generated modules reviewed (flagged/annotated)
 - # of screens edited post-generation (lower is better)
-- Successful SCORM imports during demos
+- # of viewer invites sent per project
 
 ---
 
-## 5. MVP Scope
+## 5. Implemented Features
 
-### 5.1 Content Input ✅ Implemented
-- File upload:
-  - PDF
-  - DOCX
-  - PPTX
-- URL input (public or authenticated via copy/paste)
+### 5.1 Content Input ✅
+- File upload: PDF, DOCX, PPTX
+- URL input (public web pages)
 - File size limit: 10MB
 - Mandatory user attestation: *"I confirm I have the rights to use this content."*
 - Text extracted server-side (smalot/pdfparser, phpoffice/phpword, phpoffice/phppresentation)
@@ -90,129 +87,210 @@ Users need a tool that:
 
 ---
 
-### 5.2 Generation Controls ✅ Implemented
+### 5.2 Generation Controls ✅
 
 Users must provide or choose:
-- **Duration**
-  - Minimum: 10 minutes
-  - Default: 20 minutes
-  - Maximum: 30 minutes
-- **Learning Objectives**
-  - User-defined OR AI-generated
-- **Assessment Questions**
-  - User-defined count OR AI-decided
-- **Output Size**
-  - Target: 10 screens (minimum acceptable output)
+- **Duration** — 10–30 minutes (default: 20)
+- **Learning Objectives** — user-defined or AI-generated
+- **Assessment Questions** — user-defined count or AI-decided
+- **Output Size** — minimum 10 screens
+
+Generation is handled asynchronously via `GenerationJob`. The job calls the Claude API (`GenerationService`), retries up to 3 times on schema validation failure, and updates module status to `generated` or `failed`. The frontend polls every 3 seconds.
 
 ---
 
-### 5.3 Output Structure ✅ Implemented
+### 5.3 Output Structure ✅
 
 The system generates a validated JSON module containing:
-- Metadata (title, audience, duration)
+- Metadata (title, audience, duration, source summary)
 - Learning objectives
-- Screens (content, tabs, hotspots)
-- Interactions:
-  - Multiple choice (single and multiple select)
-  - Click and reveal
-  - Accordion
+- Screens: `text`, `image_text`, `accordion`, `click_reveal`, `question`
+- Interactions: single choice, multiple choice, accordion, click-reveal (with optional images)
 - Optional assessment block
 - Accessibility metadata
+- Unsplash attribution
 
-The JSON is the **single source of truth** for:
-- Rendering
-- Editing
-- Publishing
-- Exporting
-
-Generation is handled asynchronously via a Laravel queue job (`GenerationJob`). The job calls the Claude API (`GenerationService`), retries up to 3 times on schema validation failure, and updates the module status to `generated` or `failed`. The frontend polls every 3 seconds until the status changes.
+The JSON is the **single source of truth** for rendering, editing, and exporting.
 
 ---
 
-### 5.4 Rendering (Frontend) ✅ Implemented
+### 5.4 Media & Images ✅
 
-- React-based WBT player (`WBTPlayer`)
-- Cover screen with module title, audience, duration, and learning objectives
-- Screen navigation (Next / Previous) with progress bar
-- Interactive questions (single and multiple choice) with answer feedback
-- Accordion and click-reveal interactions
+- **Auto-enrichment at generation time**: After the AI produces the module JSON, `GenerationJob` calls the Unsplash API for each screen (using the screen title as query) and populates real images — replacing placeholder URLs
+- **Click-reveal item images**: Same pipeline applied to click-reveal card items
+- **Cover image**: First real image found in the generated screens is stored as `cover_image_url` on the `modules` table for use in the project list and detail view
+- **Enrichment logging**: Summary log entry per job (succeeded / no-results / errors counts)
+- **Image replacement**: Users can replace any image via the Unsplash picker in the review editor
+- **Attribution**: Stored in `module.attribution.unsplash`; displayed in player
+- **Audio**: TTS deferred to v2
+
+---
+
+### 5.5 WBT Player ✅
+
+- React-based player (`WBTPlayer`)
+- Cover screen with title, audience, duration, learning objectives
+- Sticky header: topbar + progress bar grouped in `.player-header`
+- Sticky bottom navigation bar (white background on mobile to prevent content overlap)
+- Directional entrance animations per screen (up / left / right, staggered)
+- `RichText` component: parses bullet and numbered lists into proper `<ul>`/`<ol>` HTML
+- Screen types: text, image_text (left/right/top/bottom layouts with full-height image column), accordion (with rich text bodies), click_reveal, question
+- Click-reveal redesigned as a **modal card grid**: 16:9 aspect cards with photo or gradient backgrounds, viewed-state indicator, focus-managed modal overlay
+- Interactive questions: single and multiple choice with feedback
 - Completion screen
-- Accessibility-friendly markup (aria-expanded, aria-live, focus management)
-- Preview available at `/projects/:id/play`
+- Exit button in topbar (links back to project; hidden in viewer mode)
+- Viewer mode: no back-to-project navigation anywhere in the player
+- Accessibility: aria attributes, focus management
 
 ---
 
-### 5.5 Media (MVP) ✅ Implemented
+### 5.6 Review Editor ✅
 
-- **Images**:
-  - Unsplash API (retrieve-only)
-  - Backend proxy (`UnsplashController`) to protect API key
-  - Mandatory attribution stored in `module.attribution.unsplash`
-  - `image_text` screens are **automatically populated** with a relevant Unsplash image at generation time (using the screen title as the search query)
-  - Users can replace any image via the Unsplash picker in the review editor
-
-- **Audio (Out of Scope for MVP)**:
-  - TTS deferred to v2
+Available at `/projects/:id/review`:
+- Module metadata editing (title, audience, duration, learning objectives)
+- Per-screen field editing (title, body, image, alt text)
+- Type-specific interaction editors (choices, feedback, accordion/click-reveal items)
+- Per-screen review flags (add, resolve)
+- Unsplash image picker for `image_text` screens
 
 ---
 
-### 5.6 Review & Publishing ⚠️ Partially Implemented
+### 5.7 UI / Design System ✅
 
-- Review editor (`ModuleEditorView`) is implemented at `/projects/:id/review`:
-  - Module metadata editing (title, audience, duration, learning objectives)
-  - Per-screen field editing (title, body, image alt text)
-  - Interaction editors (question choices/feedback, accordion/click-reveal items)
-  - Per-screen review flags (add, resolve)
-  - Unsplash image picker for `image_text` screens
-- Publishing (public learner URL, versioned snapshots, event tracking) is **deferred**
+- Full dark-mode design applied to all non-player views
+- Design tokens: deep navy (`#080c14`), teal accent (`#2dd4bf`), Inter font
+- Atmospheric glow orbs on auth shell
+- Projects view: responsive card grid with cover images, hover lift effect
+- Project detail: hero banner with cover image + gradient scrim
+- Project detail redesigned as a **dashboard** with a 2-column grid layout
+- Mobile responsive throughout (stacking on small screens)
+- Player CSS is intentionally isolated from the app design system
 
 ---
 
-### 5.7 Export ❌ Deferred (out of MVP scope)
+### 5.8 Viewer Invites & Progress Tracking ✅
 
-- SCORM 1.2 export deferred to v2
+Project owners can invite external viewers to access the course without requiring a WBT Forge account.
+
+**Invite flow:**
+- Owner enters an email address and expiry duration (1–365 days) in the Viewers panel on the project detail dashboard
+- Backend sends an email with a unique magic link (`/view/{token}`)
+- **Basic plan limit**: 5 active invites per project (hardcoded; licensing system deferred)
+- Owner can revoke any active invite at any time
+
+**Viewer access:**
+- Viewer clicks the link and is shown an **email gate**: must enter the email address to which the invite was sent
+- On match, the gate is bypassed on all future visits (verified state stored in `localStorage`)
+- No account required
+
+**Progress tracking:**
+- Player reports screen index to the backend on every navigation
+- Owner sees per-viewer progress: active/revoked/expired badge, mini progress bar, screen position, completion timestamp
+- On return, viewers **resume from where they left off**; completed viewers restart from the beginning
+- Completion is recorded once — preserved even if progress is updated later
+
+**Data model:**
+- `project_invites` — email, token, expires_at, revoked_at
+- `invite_progress` — current_screen_index, total_screens, completed_at, last_active_at
+
+---
+
+### 5.9 API Surface ✅
+
+Authentication:
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+
+Projects:
+- `GET /api/projects` — includes `cover_image_url` and `module_status` per project
+- `POST /api/projects`
+- `GET /api/projects/{id}` — includes `cover_image_url` and `module_status`
+- `POST /api/projects/{id}/source`
+
+Modules:
+- `POST /api/projects/{id}/module/generate`
+- `GET /api/projects/{id}/module`
+- `PUT /api/projects/{id}/module`
+- `POST /api/projects/{id}/module/flags`
+
+Invites (authenticated):
+- `GET /api/projects/{id}/invites`
+- `POST /api/projects/{id}/invites`
+- `DELETE /api/projects/{id}/invites/{inviteId}`
+
+Viewer (public, token-gated):
+- `GET /api/view/{token}` — validates token, returns module JSON + saved progress
+- `POST /api/view/{token}/verify` — verifies viewer email against invite
+- `POST /api/view/{token}/progress` — records screen progress
+
+Media:
+- `GET /api/unsplash/search?q=&page=`
+
+Frontend routes:
+- `/login`
+- `/projects`
+- `/projects/new`
+- `/projects/:id`
+- `/projects/:id/review`
+- `/projects/:id/play`
+- `/view/:token` — public viewer player (no auth)
+
+---
+
+## 6. Deferred / Known Items
+
+### 6.1 SCORM / xAPI Export ❌
+- Deferred to v2
 - Backend stub (`ScormController`) exists but is not built out
-- xAPI export deferred to v2
 
----
+### 6.2 Licensing & Payment ❌
+- The 5-viewer limit is hardcoded as a basic plan constant (`MAX_INVITES = 5`)
+- A full licensing/plan system requires a payment gateway
+- **PayPal** is the preferred gateway (to avoid storing card data in the system)
+- All plan enforcement logic is in one place (`ProjectInvitesController::MAX_INVITES`) — easy to loosen when tiers are introduced
 
-## 6. Non-Goals (Explicitly Out of Scope for MVP)
+### 6.3 Email Delivery ❌ (Production)
+- Currently using Laravel's `log` mail driver in development — emails written to `storage/logs/laravel.log`
+- Production deployment will require a real SMTP provider (Mailgun, Postmark, SES, etc.)
+- `MAIL_*` env vars are already wired; only the driver and credentials need changing
 
-- Text-to-Speech / narration
-- Advanced analytics dashboards
-- Multi-tenant org management
-- Billing / subscriptions
+### 6.4 Publishing / Public URLs ❌
+- Versioned module snapshots not yet implemented
+- `Event` model exists but publishing trigger is deferred
+
+### 6.5 Analytics Dashboard ❌
+- Viewer progress is tracked per-invite but there is no aggregate analytics view
+- Deferred to post-MVP
+
+### 6.6 Other Deferred Items
+- Text-to-Speech / narration (ElevenLabs integration noted for v2)
+- Multi-tenant organization management
 - Localization / translations
 - Branching scenarios
-- SCORM / xAPI export
-- Public learner URLs / publishing
+- AI-powered content refinement ("improve this screen" in editor)
+- Native PDF-to-Claude (send file directly for image-aware generation)
 
 ---
 
-## 7. Technical Architecture (MVP)
+## 7. Technical Architecture
 
 ### Frontend
 - React + Vite + TypeScript
-- Tailwind-inspired custom CSS
+- Custom dark-mode CSS design system (CSS custom properties)
 - Zod for module schema validation (`moduleSchema.ts`)
 - React Router for navigation
-- Key routes:
-  - `/login` — authentication
-  - `/projects` — project list
-  - `/projects/new` — creation wizard
-  - `/projects/:id` — project detail + module status
-  - `/projects/:id/review` — review editor
-  - `/projects/:id/play` — WBT player (preview)
+- `localStorage` used for viewer email verification persistence
 
 ### Backend
 - Laravel 12 + SQLite
-- Laravel Sanctum (token-based auth)
-- REST API
+- Laravel Sanctum (token-based auth for owners)
+- REST API — public viewer endpoints are token-gated (no Sanctum)
 - Queue-based AI generation (database queue driver)
 - Anthropic Claude API (`anthropic-ai/sdk`) — **not OpenAI**
   - Default model: `claude-sonnet-4-6`
   - Configurable via `ANTHROPIC_MODEL` env var
 - Unsplash API proxy
+- Laravel Mail (log driver in dev; SMTP in prod)
 - File parsing: smalot/pdfparser, phpoffice/phpword, phpoffice/phppresentation
 
 ### Local-First Principle
@@ -222,10 +300,10 @@ Generation is handled asynchronously via a Laravel queue job (`GenerationJob`). 
 
 ### Starting the application
 ```bash
-# Backend (from /backend) — starts server, queue worker, log watcher, backend Vite
+# Backend (from /backend)
 composer dev
 
-# Frontend (from /frontend) — starts React dev server
+# Frontend (from /frontend)
 npm run dev
 ```
 
@@ -234,18 +312,25 @@ Required env vars in `backend/.env`:
 ANTHROPIC_API_KEY=
 ANTHROPIC_MODEL=claude-sonnet-4-6   # use claude-haiku-4-5-20251001 for faster/cheaper testing
 UNSPLASH_ACCESS_KEY=
+FRONTEND_URL=http://localhost:5173  # used to build viewer invite links in emails
 ```
 
 ---
 
-## 8. Data Model (MVP)
+## 8. Data Model
 
-Core entities:
-- `User` — login required, projects scoped to user
-- `Project` — title, rights attestation, source type/url/text/character count
-- `Module` — JSON payload, status (`generating` | `generated` | `failed`), generation error
-- `ModuleFlag` — per-screen review flags (stored in both DB and module JSON)
-- `Event` — basic tracking (implemented, publishing trigger deferred)
+| Table | Purpose |
+|---|---|
+| `users` | Owner accounts (Sanctum auth) |
+| `projects` | Title, rights attestation, source type/url/text/character count |
+| `modules` | JSON payload, status, generation error, `cover_image_url` |
+| `module_flags` | Per-screen review flags |
+| `module_versions` | Version snapshots (stub) |
+| `project_invites` | Viewer invites — email, token, expiry, revoked_at |
+| `invite_progress` | Per-viewer screen progress and completion |
+| `events` | Basic tracking (deferred) |
+| `personal_access_tokens` | Sanctum tokens |
+| `frontend_texts` | CMS-style UI text overrides |
 
 ---
 
@@ -254,54 +339,65 @@ Core entities:
 - Rights attestation logged per project
 - No content redistribution beyond user intent
 - Unsplash attribution compliance (stored in module JSON, displayed in player)
-- PII protection compliance (avoid storing learner PII for MVP)
 - API keys protected server-side (Unsplash proxy, Claude key never exposed to frontend)
+- Viewer access is token-gated + email-verified (case-insensitive match)
+- Viewer tokens are 48-character random strings (Str::random)
+- No viewer PII stored beyond the invited email address
 
 ---
 
 ## 10. Risks & Mitigations
 
 | Risk | Mitigation |
-|----|----|
+|---|---|
 | Low AI output quality | Strong schema validation + up to 3 generation retries + human review editor |
 | API cost creep | No TTS in MVP; Unsplash free tier; 50k char input cap; Haiku model for testing |
 | Generation timeout | Queue worker timeout set to 180s; job timeout 120s |
-| LMS comparison | Position as LMS-free, rapid deployment tool |
-| Overbuilding | Strict MVP scope, local demo focus |
+| Invite link abuse | Email gate verification + expiry + revocation |
+| Plan limit bypass | Limit checked server-side against active (non-expired, non-revoked) invites |
+| Email delivery in prod | Log driver for dev; production requires real SMTP config |
 
 ---
 
-## 11. Future Enhancements (Post-MVP)
+## 11. Post-MVP Roadmap
 
-- SCORM 1.2 / xAPI export
-- Public learner URLs with versioned snapshots
-- Basic event tracking (start, screen views, completion)
-- ElevenLabs TTS with cost estimation
-- Seat limits & learner management
-- Analytics dashboard
-- Multi-language support
-- Theme marketplace
-- AI-powered content refinement
-- Native document input to Claude (send PDF directly for image-aware generation)
-
----
-
-## 12. MVP Definition of Done
-
-- [x] Local demo: upload/URL → generate → review
-- [x] Unsplash image picker functional (auto-populated on generation, replaceable in editor)
-- [x] WBT player renders all screen types with interactive questions
-- [ ] SCORM export imports cleanly into SCORM Cloud — **deferred to v2**
-- [x] No external infrastructure required beyond API keys
-- [x] Clear path to v2 monetization
+| Item | Notes |
+|---|---|
+| Payment gateway (PayPal) | Unlocks paid plan tiers; viewer slot limits per plan |
+| SCORM 1.2 / xAPI export | Stub exists; requires full packaging logic |
+| Email delivery (SMTP) | Drop-in: change `MAIL_MAILER` and credentials |
+| Analytics dashboard | Aggregate viewer progress, completion rates per project |
+| Public learner URLs | Versioned snapshots, no invite required |
+| ElevenLabs TTS | Screen narration with cost estimation |
+| AI content refinement | "Improve this screen" in the editor |
+| Multi-language support | Localization of generated content |
+| Native PDF-to-Claude | Send file directly for image-aware generation |
+| Multi-tenant orgs | Org-scoped projects, team members |
+| Theme marketplace | Branded player skins |
 
 ---
 
-## 13. Product Positioning (Draft)
+## 12. Definition of Done (Updated)
+
+- [x] Upload / URL → generate → review flow
+- [x] Unsplash images auto-populated at generation; replaceable in editor
+- [x] WBT player renders all screen types with interactions
+- [x] Dark-mode UI across all non-player views
+- [x] Project list as cover-image card grid
+- [x] Project detail as dashboard
+- [x] Viewer invite system (email, token, expiry, revoke)
+- [x] Viewer email gate + localStorage persistence
+- [x] Per-viewer progress tracking and resume
+- [x] No LMS required for learner access
+- [ ] SCORM export — deferred to v2
+- [ ] Payment / licensing — deferred to v2
+- [ ] Production email delivery — requires SMTP config at deploy time
+
+---
+
+## 13. Product Positioning
 
 > *"Turn your existing documents into interactive training—no LMS required."*
-
-Or:
 
 > *"The fastest way to turn PDFs and slides into real training."*
 
@@ -311,14 +407,14 @@ Or:
 
 ---
 
-## Appendix A: Module JSON Schema (MVP — Implemented)
+## Appendix A: Module JSON Schema (Implemented)
 
 Schema goals:
 - Single source of truth for render, review, and export
 - Minimal but extensible, with versioned schema
 - Supports required screen types and attribution
 
-### A.1 Core JSON Shape (MVP)
+### A.1 Core JSON Shape
 
 ```json
 {
@@ -342,6 +438,26 @@ Schema goals:
       "body": "This training covers core safety procedures.",
       "image": null,
       "interactions": [],
+      "accessibility": { "alt_text": null }
+    },
+    {
+      "id": "scr_002",
+      "type": "click_reveal",
+      "title": "Key Procedures",
+      "body": "Explore each procedure below.",
+      "image": null,
+      "interactions": [
+        {
+          "kind": "click_reveal",
+          "items": [
+            {
+              "title": "Fire Safety",
+              "body": "Locate the nearest exit before starting work.",
+              "image": { "url": "https://images.unsplash.com/...", "alt_text": "fire exit sign" }
+            }
+          ]
+        }
+      ],
       "accessibility": { "alt_text": null }
     },
     {
@@ -390,184 +506,60 @@ Schema goals:
 }
 ```
 
-### A.2 Required Screen Types
-- `text`
-- `image_text`
-- `accordion`
-- `click_reveal`
-- `question`
+### A.2 Screen Types
+- `text` — title + body text
+- `image_text` — title + body + image (layout: `top` | `bottom` | `left` | `right`; assigned randomly at generation)
+- `accordion` — collapsible items with rich text bodies
+- `click_reveal` — modal card grid; cards have photo or gradient background; optional per-item images via Unsplash
+- `question` — single or multiple choice with feedback
 
 ### A.3 Interaction Types
 - `single_choice`
 - `multi_choice`
-- `accordion` (items with `title`, `body`)
-- `click_reveal` (items with `title`, `body`)
+- `accordion` (items: `title`, `body`)
+- `click_reveal` (items: `title`, `body`, optional `image`)
 
-### A.4 Validation Rules (MVP)
-- `schema_version` required, semantic version string
-- `meta.title` required; `meta.duration_minutes` between 10 and 30
-- `learning_objectives` minimum 1 item
-- `screens` minimum 10 items (target output)
+### A.4 Validation Rules
+- `schema_version` required
+- `meta.title` required; `meta.duration_minutes` 10–30
+- `learning_objectives` min 1
+- `screens` min 10
 - `screen.id` unique across module
 - `question` screens must include at least 1 interaction
-- `image.alt_text` required when `image` is present
 - `image_text` screens must include an `image` object
-- Duplicate screen IDs are not permitted (enforced globally)
-- Additional constraints implemented in Zod `superRefine` logic
-
-### A.5 Zod Schema (Implemented — `frontend/src/lib/moduleSchema.ts`)
-
-```ts
-import { z } from "zod";
-
-const choiceSchema = z.object({
-  id: z.string(),
-  text: z.string(),
-  is_correct: z.boolean()
-});
-
-const interactionSchema = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("single_choice"),
-    prompt: z.string(),
-    choices: z.array(choiceSchema).min(2),
-    feedback: z.object({
-      correct: z.string(),
-      incorrect: z.string()
-    })
-  }),
-  z.object({
-    kind: z.literal("multi_choice"),
-    prompt: z.string(),
-    choices: z.array(choiceSchema).min(2),
-    feedback: z.object({
-      correct: z.string(),
-      incorrect: z.string()
-    })
-  }),
-  z.object({
-    kind: z.literal("accordion"),
-    items: z.array(
-      z.object({ title: z.string(), body: z.string() })
-    ).min(2)
-  }),
-  z.object({
-    kind: z.literal("click_reveal"),
-    items: z.array(
-      z.object({ title: z.string(), body: z.string() })
-    ).min(2)
-  })
-]);
-
-const screenSchema = z.object({
-  id: z.string(),
-  type: z.enum(["text", "image_text", "accordion", "click_reveal", "question"]),
-  title: z.string(),
-  body: z.string(),
-  image: z.object({
-    url: z.string().url(),
-    alt_text: z.string()
-  }).nullable(),
-  interactions: z.array(interactionSchema),
-  accessibility: z.object({ alt_text: z.string().nullable() })
-});
-
-export const moduleSchema = z.object({
-  schema_version: z.string(),
-  meta: z.object({
-    title: z.string(),
-    audience: z.string(),
-    duration_minutes: z.number().min(10).max(30),
-    source_summary: z.string(),
-    created_at: z.string()
-  }),
-  learning_objectives: z.array(z.string()).min(1),
-  screens: z.array(screenSchema).min(10),
-  assessment: z.object({
-    questions: z.array(z.any()),
-    passing_score: z.number().min(0).max(1)
-  }).optional(),
-  attribution: z.object({
-    unsplash: z.array(z.object({
-      image_id: z.string(),
-      photographer: z.string(),
-      url: z.string().url(),
-      license: z.string()
-    }))
-  }),
-  review_flags: z.array(z.object({
-    target_id: z.string(),
-    target_type: z.enum(["screen", "interaction"]),
-    reason: z.string(),
-    notes: z.string().optional(),
-    status: z.enum(["open", "resolved"])
-  })).default([])
-});
-```
+- Duplicate screen IDs not permitted
 
 ---
 
-## Appendix B: MVP User Flow (Implemented)
+## Appendix B: User Flow (Implemented)
 
-1) **Login** — `/login`
-   - Email/password login via Sanctum token auth
-
-2) **Projects** — `/projects`
-   - Project list scoped to authenticated user
-   - "New Project" button
-
-3) **New Project Wizard** — `/projects/new`
-   - Step 1: Title + rights attestation checkbox
-   - Step 2: Upload PDF/DOCX/PPTX (10MB limit) or paste URL
-   - Step 3: Duration, learning objectives, assessment count
-   - Step 4: Review summary → "Generate Training"
-
-4) **Project Detail** — `/projects/:id`
-   - Shows project info, source metadata, module status
-   - Polls during generation; shows error + retry on failure
-   - "Review module" and "Preview" buttons when generated
-
-5) **Review Editor** — `/projects/:id/review`
-   - Two-panel layout: screen list sidebar + editor panel
-   - Module info editing
-   - Per-screen field editing with type-specific interaction editors
-   - Unsplash image picker for image_text screens
-   - Per-screen review flags (add/resolve)
-   - Save changes
-
-6) **WBT Player (Preview)** — `/projects/:id/play`
-   - Cover screen → screens → completion
-   - Interactive questions with feedback
-   - Accordion and click-reveal interactions
-   - Progress bar
-
-7) **Export** — ❌ Deferred to v2
+1. **Login** — `/login`
+2. **Projects** — `/projects` — responsive card grid with cover images
+3. **New Project Wizard** — `/projects/new`
+   - Step 1: Title + rights attestation
+   - Step 2: Upload file or paste URL
+   - Step 3: Duration, objectives, assessment count
+   - Step 4: Review → Generate
+4. **Project Detail Dashboard** — `/projects/:id`
+   - Hero banner (cover image)
+   - Training module status panel (with review/preview actions)
+   - Project info panel
+   - Viewers panel (invite, track, revoke)
+5. **Review Editor** — `/projects/:id/review`
+6. **Owner Preview** — `/projects/:id/play`
+7. **Viewer Player** — `/view/:token` (public, no login)
+   - Email gate → course → resume on return → completion (no back-to-project)
 
 ---
 
-## Appendix C: MVP API Endpoints (Implemented)
+## Appendix C: Environment Variables
 
-Authentication:
-- `POST /api/auth/login`
-- `POST /api/auth/logout`
-
-Projects:
-- `GET /api/projects`
-- `POST /api/projects`
-- `GET /api/projects/{id}`
-- `POST /api/projects/{id}/source`
-
-Modules:
-- `POST /api/projects/{id}/module/generate`
-- `GET /api/projects/{id}/module`
-- `PUT /api/projects/{id}/module`
-- `POST /api/projects/{id}/module/flags`
-
-Media:
-- `GET /api/unsplash/search?q=&page=`
-
-Exports (stub only):
-- `POST /api/projects/{id}/scorm` — not implemented
-
-Events (deferred):
-- `POST /api/projects/{id}/events`
+| Variable | Required | Notes |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | ✅ | Claude API key |
+| `ANTHROPIC_MODEL` | Optional | Default: `claude-sonnet-4-6` |
+| `UNSPLASH_ACCESS_KEY` | Optional | Image enrichment skipped if absent |
+| `FRONTEND_URL` | ✅ | Used to build viewer invite links in emails. Default: `http://localhost:5173` |
+| `MAIL_MAILER` | ✅ | `log` for dev; set to `smtp`/`mailgun`/etc. for prod |
+| `MAIL_FROM_ADDRESS` | ✅ | From address for invite emails |
+| `APP_NAME` | Optional | Shown in email templates. Default: `Laravel` — set to `WBT Forge` |
