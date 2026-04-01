@@ -12,7 +12,10 @@ class GenerationService
 
     public function __construct()
     {
-        $this->client = new Client(apiKey: config('services.anthropic.api_key'));
+        $this->client = new Client(
+            apiKey: config('services.anthropic.api_key'),
+            requestOptions: ['timeout' => 180], // 3 minutes per API call
+        );
         $this->model  = config('services.anthropic.model', 'claude-sonnet-4-6');
     }
 
