@@ -20,6 +20,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     method: options.method || 'GET',
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
