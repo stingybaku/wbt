@@ -7,6 +7,10 @@ RUN apk add --no-cache \
         libzip-dev \
         oniguruma-dev \
         libxml2-dev \
+        libpng-dev \
+        libjpeg-turbo-dev \
+        freetype-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
         intl \
         zip \
@@ -15,7 +19,8 @@ RUN apk add --no-cache \
         dom \
         bcmath \
         pdo \
-        pcntl
+        pcntl \
+        gd
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -45,7 +50,11 @@ RUN apk add --no-cache \
         libzip-dev \
         oniguruma-dev \
         libxml2-dev \
+        libpng-dev \
+        libjpeg-turbo-dev \
+        freetype-dev \
         qpdf \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
         intl \
         zip \
@@ -55,7 +64,8 @@ RUN apk add --no-cache \
         bcmath \
         pdo \
         pdo_pgsql \
-        pcntl
+        pcntl \
+        gd
 
 COPY backend/. ./
 COPY --from=vendor /app/vendor ./vendor
