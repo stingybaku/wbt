@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('project_invites', function (Blueprint $table) {
             $table->string('id')->primary();
-            $table->string('project_id');
+            $table->uuid('project_id');
             $table->foreignId('invited_by_user_id')->constrained('users')->cascadeOnDelete();
             $table->string('email');
             $table->string('token', 64)->unique();
