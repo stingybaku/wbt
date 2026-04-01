@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('frontend_texts', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->string('id')->primary();
             $table->string('route_key', 120)->index();
             $table->string('text_key', 120);
             $table->text('value');
