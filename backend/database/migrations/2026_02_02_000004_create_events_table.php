@@ -9,8 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('events', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->uuid('project_id');
+            $table->string('id')->primary();
+            $table->string('project_id');
             $table->string('type');
             $table->json('meta')->nullable();
             $table->timestamps();

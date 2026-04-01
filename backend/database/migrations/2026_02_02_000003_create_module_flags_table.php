@@ -9,8 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('module_flags', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->uuid('project_id');
+            $table->string('id')->primary();
+            $table->string('project_id');
             $table->string('target_id');
             $table->string('target_type');
             $table->string('reason');

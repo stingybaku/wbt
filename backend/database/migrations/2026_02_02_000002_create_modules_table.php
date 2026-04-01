@@ -9,8 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('modules', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->uuid('project_id');
+            $table->string('id')->primary();
+            $table->string('project_id');
             $table->json('module_json')->nullable();
             $table->string('status')->default('draft');
             $table->timestamps();
