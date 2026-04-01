@@ -18,6 +18,8 @@ export type Project = {
   source_type: 'file' | 'url' | null;
   source_url: string | null;
   source_character_count: number | null;
+  cover_image_url: string | null;
+  module_status: 'generating' | 'generated' | 'failed' | null;
   created_at: string;
   updated_at: string;
 };

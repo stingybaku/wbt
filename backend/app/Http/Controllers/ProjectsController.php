@@ -10,11 +10,20 @@ class ProjectsController extends Controller
 {
     public function index(Request $request)
     {
-        return response()->json([
-            'projects' => Project::where('user_id', $request->user()->id)
-                ->orderByDesc('created_at')
-                ->get()
-        ]);
+        $projects = Project::where('user_id', $request->user()->id)
+            ->orderByDesc('created_at')
+            ->with(['modules' => fn($q) => $q->select('project_id', 'status', 'cover_image_url')])
+            ->get()
+            ->map(function ($project) {
+                $module = $project->modules->first();
+                $data = $project->toArray();
+                unset($data['modules']);
+                $data['cover_image_url'] = $module?->cover_image_url;
+                $data['module_status']   = $module?->status;
+                return $data;
+            });
+
+        return response()->json(['projects' => $projects]);
     }
 
     public function store(Request $request)
@@ -38,8 +47,15 @@ class ProjectsController extends Controller
     {
         $project = Project::where('id', $id)
             ->where('user_id', $request->user()->id)
+            ->with(['modules' => fn($q) => $q->select('project_id', 'status', 'cover_image_url')])
             ->firstOrFail();
 
-        return response()->json(['project' => $project]);
+        $module = $project->modules->first();
+        $data = $project->toArray();
+        unset($data['modules']);
+        $data['cover_image_url'] = $module?->cover_image_url;
+        $data['module_status']   = $module?->status;
+
+        return response()->json(['project' => $data]);
     }
 }
