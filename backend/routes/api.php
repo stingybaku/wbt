@@ -6,13 +6,20 @@ use App\Http\Controllers\EventsController;
 use App\Http\Controllers\FrontendTextController;
 use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\ModuleFlagsController;
+use App\Http\Controllers\ProjectInvitesController;
 use App\Http\Controllers\ProjectsController;
 use App\Http\Controllers\ProjectSourceController;
 use App\Http\Controllers\ScormController;
 use App\Http\Controllers\UnsplashController;
+use App\Http\Controllers\ViewerController;
 
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::get('/frontend-texts', [FrontendTextController::class, 'index']);
+
+// Public viewer routes (token-gated, no auth required)
+Route::get('/view/{token}',              [ViewerController::class, 'show']);
+Route::post('/view/{token}/verify',      [ViewerController::class, 'verify']);
+Route::post('/view/{token}/progress',    [ViewerController::class, 'updateProgress']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -32,4 +39,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/projects/{id}/scorm', [ScormController::class, 'export']);
 
     Route::post('/projects/{id}/events', [EventsController::class, 'store']);
+
+    // Invites
+    Route::get('/projects/{id}/invites',              [ProjectInvitesController::class, 'index']);
+    Route::post('/projects/{id}/invites',             [ProjectInvitesController::class, 'store']);
+    Route::delete('/projects/{id}/invites/{inviteId}', [ProjectInvitesController::class, 'revoke']);
 });

@@ -6,6 +6,7 @@ import { ProjectDetailView } from './components/ProjectDetailView';
 import { CreateProjectWizard } from './components/CreateProjectWizard';
 import { ModuleReviewPage } from './components/ModuleEditorView';
 import { WBTPlayerPage } from './components/WBTPlayer';
+import { ViewerPlayerPage } from './components/ViewerPlayerPage';
 import { login, fetchProjects } from './lib/api';
 import { useState, useEffect } from 'react';
 import type { Project } from './lib/types';
@@ -85,6 +86,7 @@ function ProjectsPage() {
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/view/:token', element: <ViewerPlayerPage /> },
   {
     element: <RequireAuth />,
     children: [
