@@ -14,8 +14,8 @@ class GenerationJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 120;
-    public int $tries   = 1; // Retries are handled inside GenerationService
+    public int $timeout = 660; // 3 attempts × 3 min + 3 min image enrichment headroom
+    public int $tries   = 1;  // Retries are handled inside GenerationService
 
     public function __construct(
         public readonly string $projectId,
