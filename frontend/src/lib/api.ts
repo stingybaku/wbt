@@ -132,6 +132,42 @@ export function uploadSource(
   });
 }
 
+export function fetchInvites(token: string, projectId: string): Promise<{ invites: import('./types').ProjectInvite[] }> {
+  return request(`/projects/${projectId}/invites`, { token });
+}
+
+export function createInvite(
+  token: string,
+  projectId: string,
+  payload: { email: string; expires_days: number }
+): Promise<{ invite: import('./types').ProjectInvite }> {
+  return request(`/projects/${projectId}/invites`, { method: 'POST', token, body: payload });
+}
+
+export function revokeInvite(token: string, projectId: string, inviteId: string): Promise<{ ok: boolean }> {
+  return request(`/projects/${projectId}/invites/${inviteId}`, { method: 'DELETE', token });
+}
+
+export function fetchViewerModule(viewerToken: string): Promise<{
+  project_title: string;
+  module: import('./moduleSchema').Module;
+  expires_at: string;
+  progress: { current_screen_index: number; total_screens: number; completed_at: string | null } | null;
+}> {
+  return request(`/view/${viewerToken}`);
+}
+
+export function verifyViewer(viewerToken: string, email: string): Promise<{ ok: boolean }> {
+  return request(`/view/${viewerToken}/verify`, { method: 'POST', body: { email } });
+}
+
+export function updateViewerProgress(
+  viewerToken: string,
+  payload: { current_screen_index: number; total_screens: number }
+): Promise<{ ok: boolean }> {
+  return request(`/view/${viewerToken}/progress`, { method: 'POST', body: payload });
+}
+
 export function fetchFrontendTexts(routeKey: string): Promise<FrontendTextsResponse> {
   return request<FrontendTextsResponse>(`/frontend-texts?route_key=${encodeURIComponent(routeKey)}`);
 }

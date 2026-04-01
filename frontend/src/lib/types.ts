@@ -52,3 +52,22 @@ export type FrontendTextsResponse = {
   route_key: string;
   texts: Record<string, string>;
 };
+
+export type InviteProgress = {
+  current_screen_index: number;
+  total_screens: number;
+  percent: number;
+  completed_at: string | null;
+  last_active_at: string | null;
+};
+
+export type ProjectInvite = {
+  id: string;
+  email: string;
+  expires_days: number;
+  expires_at: string;
+  revoked_at: string | null;
+  is_active: boolean;
+  created_at: string;
+  progress: InviteProgress | null;
+};

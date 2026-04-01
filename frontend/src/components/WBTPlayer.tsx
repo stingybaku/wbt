@@ -101,6 +101,7 @@ export function WBTPlayerPage() {
     <WBTPlayer
       module={moduleRecord.module_json}
       projectId={project.id}
+      projectTitle={project.title}
     />
   );
 }
@@ -109,23 +110,44 @@ export function WBTPlayerPage() {
 
 type PlayerPhase = 'cover' | 'training' | 'complete';
 
-function WBTPlayer({ module, projectId }: { module: Module; projectId: string }) {
-  const [phase, setPhase] = useState<PlayerPhase>('cover');
-  const [screenIndex, setScreenIndex] = useState(0);
+export function WBTPlayer({
+  module,
+  projectId,
+  projectTitle,
+  viewerMode = false,
+  initialScreenIndex = 0,
+  onScreenChange,
+}: {
+  module: Module;
+  projectId: string;
+  projectTitle?: string;
+  viewerMode?: boolean;
+  initialScreenIndex?: number;
+  onScreenChange?: (index: number, total: number) => void;
+}) {
+  const [phase, setPhase] = useState<PlayerPhase>(initialScreenIndex > 0 ? 'training' : 'cover');
+  const [screenIndex, setScreenIndex] = useState(initialScreenIndex);
 
   const screens = module.screens;
   const currentScreen = screens[screenIndex];
 
   function goNext() {
     if (screenIndex < screens.length - 1) {
-      setScreenIndex(i => i + 1);
+      const next = screenIndex + 1;
+      setScreenIndex(next);
+      onScreenChange?.(next, screens.length);
     } else {
       setPhase('complete');
+      onScreenChange?.(screens.length - 1, screens.length);
     }
   }
 
   function goPrev() {
-    if (screenIndex > 0) setScreenIndex(i => i - 1);
+    if (screenIndex > 0) {
+      const prev = screenIndex - 1;
+      setScreenIndex(prev);
+      onScreenChange?.(prev, screens.length);
+    }
   }
 
   if (phase === 'cover') {
@@ -133,27 +155,30 @@ function WBTPlayer({ module, projectId }: { module: Module; projectId: string })
       <CoverScreen
         module={module}
         projectId={projectId}
+        viewerMode={viewerMode}
         onStart={() => setPhase('training')}
       />
     );
   }
 
   if (phase === 'complete') {
-    return <CompletionScreen module={module} projectId={projectId} />;
+    return <CompletionScreen module={module} projectId={projectId} viewerMode={viewerMode} />;
   }
 
   return (
     <div className="player-shell">
       <div className="player-header">
         <header className="player-topbar">
-          <span className="player-title">{module.meta.title}</span>
+          <span className="player-title">{projectTitle ?? module.meta.title}</span>
           <div className="player-topbar-right">
             <span className="player-progress">
               {screenIndex + 1} / {screens.length}
             </span>
-            <Link to={`/projects/${projectId}`} className="player-exit-btn" aria-label="Exit training">
-              ✕
-            </Link>
+            {projectId && (
+              <Link to={`/projects/${projectId}`} className="player-exit-btn" aria-label="Exit training">
+                ✕
+              </Link>
+            )}
           </div>
         </header>
 
@@ -183,10 +208,12 @@ function WBTPlayer({ module, projectId }: { module: Module; projectId: string })
 function CoverScreen({
   module,
   projectId,
+  viewerMode,
   onStart,
 }: {
   module: Module;
   projectId: string;
+  viewerMode: boolean;
   onStart: () => void;
 }) {
   return (
@@ -212,9 +239,11 @@ function CoverScreen({
           <button onClick={onStart} className="player-start-btn">
             Start training →
           </button>
-          <Link to={`/projects/${projectId}`} className="muted">
-            ← Back to project
-          </Link>
+          {!viewerMode && (
+            <Link to={`/projects/${projectId}`} className="muted">
+              ← Back to project
+            </Link>
+          )}
         </div>
       </div>
     </div>
@@ -632,18 +661,20 @@ function QuestionScreen({
 
 // ─── Completion screen ────────────────────────────────────────────────────────
 
-function CompletionScreen({ module, projectId }: { module: Module; projectId: string }) {
+function CompletionScreen({ module, projectId, viewerMode }: { module: Module; projectId: string; viewerMode: boolean }) {
   return (
     <div className="player-shell player-cover">
       <div className="player-cover-card player-complete-card">
         <div className="player-complete-icon" aria-hidden="true">✓</div>
         <h1 className="player-cover-title">Training complete</h1>
         <p className="player-complete-subtitle">{module.meta.title}</p>
-        <div className="player-cover-actions">
-          <Link to={`/projects/${projectId}`}>
-            <button type="button">Back to project</button>
-          </Link>
-        </div>
+        {!viewerMode && (
+          <div className="player-cover-actions">
+            <Link to={`/projects/${projectId}`}>
+              <button type="button">Back to project</button>
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
