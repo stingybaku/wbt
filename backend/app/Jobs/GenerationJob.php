@@ -50,6 +50,7 @@ class GenerationJob implements ShouldQueue
                 'module_json'      => $moduleJson,
                 'status'           => 'generated',
                 'generation_error' => null,
+                'cover_image_url'  => $this->extractCoverImage($moduleJson),
             ]);
 
             Log::info("GenerationJob succeeded for project {$this->projectId}");
@@ -204,6 +205,17 @@ class GenerationJob implements ShouldQueue
         }
 
         return $moduleJson;
+    }
+
+    private function extractCoverImage(array $moduleJson): ?string
+    {
+        foreach ($moduleJson['screens'] ?? [] as $screen) {
+            $url = $screen['image']['url'] ?? null;
+            if ($url && !str_contains($url, 'placeholder')) {
+                return $url;
+            }
+        }
+        return null;
     }
 
     private function markFailed(Module $module, string $message): void

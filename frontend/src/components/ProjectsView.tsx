@@ -56,21 +56,30 @@ export function ProjectsView({ email, projects, loading, onRefresh, onLogout }: 
         </div>
       </header>
 
-      <section className="card">
-        <h2>{t('projects.recent_title', 'Recent Projects')}</h2>
+      <section>
+        <h2 className="projects-grid-heading">{t('projects.recent_title', 'Recent Projects')}</h2>
         {sortedProjects.length === 0 ? (
           <p className="muted">{t('projects.empty_state', 'No projects yet. Create your first one.')}</p>
         ) : (
-          <ul className="project-list">
+          <ul className="project-grid">
             {sortedProjects.map((project) => (
               <li key={project.id}>
-                <div>
-                  <strong>
-                    <Link to={`/projects/${project.id}`}>{project.title}</Link>
-                  </strong>
-                  <p className="muted">{project.id}</p>
-                </div>
-                <time>{new Date(project.created_at).toLocaleString()}</time>
+                <Link to={`/projects/${project.id}`} className="project-card">
+                  <div
+                    className="project-card-cover"
+                    style={project.cover_image_url ? { backgroundImage: `url(${project.cover_image_url})` } : undefined}
+                  >
+                    {!project.cover_image_url && <span className="project-card-cover-placeholder">⬡</span>}
+                  </div>
+                  <div className="project-card-body">
+                    <strong className="project-card-title">{project.title}</strong>
+                    <time className="project-card-date">
+                      {new Date(project.created_at).toLocaleDateString(undefined, {
+                        year: 'numeric', month: 'short', day: 'numeric',
+                      })}
+                    </time>
+                  </div>
+                </Link>
               </li>
             ))}
           </ul>

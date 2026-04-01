@@ -103,6 +103,12 @@ export function ProjectDetailView() {
   return (
     <main className="app-shell">
       <section className="layout">
+        {project.cover_image_url && (
+          <div
+            className="project-detail-hero"
+            style={{ backgroundImage: `url(${project.cover_image_url})` }}
+          />
+        )}
         <header className="topbar">
           <div>
             <Link to="/projects" className="muted">← Projects</Link>

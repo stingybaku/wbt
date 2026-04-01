@@ -17,6 +17,7 @@ class Module extends Model
         'module_json',
         'status',
         'generation_error',
+        'cover_image_url',
     ];
 
     protected $casts = [
