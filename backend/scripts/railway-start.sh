@@ -86,9 +86,27 @@ fi
 if [ -n "${APP_URL:-}" ]; then upsert_env "APP_URL" "${APP_URL}"; fi
 if [ -n "${ASSET_URL:-}" ]; then upsert_env "ASSET_URL" "${ASSET_URL}"; fi
 
+# Persist FRONTEND_URL so CORS middleware reads it correctly after config:clear.
+if [ -n "${FRONTEND_URL:-}" ]; then upsert_env "FRONTEND_URL" "${FRONTEND_URL}"; fi
+
+# Persist mail settings if provided.
+if [ -n "${MAIL_MAILER:-}" ]; then upsert_env "MAIL_MAILER" "${MAIL_MAILER}"; fi
+if [ -n "${MAIL_HOST:-}" ]; then upsert_env "MAIL_HOST" "${MAIL_HOST}"; fi
+if [ -n "${MAIL_PORT:-}" ]; then upsert_env "MAIL_PORT" "${MAIL_PORT}"; fi
+if [ -n "${MAIL_USERNAME:-}" ]; then upsert_env "MAIL_USERNAME" "${MAIL_USERNAME}"; fi
+if [ -n "${MAIL_PASSWORD:-}" ]; then upsert_env "MAIL_PASSWORD" "${MAIL_PASSWORD}"; fi
+if [ -n "${MAIL_FROM_ADDRESS:-}" ]; then upsert_env "MAIL_FROM_ADDRESS" "${MAIL_FROM_ADDRESS}"; fi
+if [ -n "${MAIL_FROM_NAME:-}" ]; then upsert_env "MAIL_FROM_NAME" "${MAIL_FROM_NAME}"; fi
+
+# Persist AI / media keys.
+if [ -n "${ANTHROPIC_API_KEY:-}" ]; then upsert_env "ANTHROPIC_API_KEY" "${ANTHROPIC_API_KEY}"; fi
+if [ -n "${ANTHROPIC_MODEL:-}" ]; then upsert_env "ANTHROPIC_MODEL" "${ANTHROPIC_MODEL}"; fi
+if [ -n "${UNSPLASH_ACCESS_KEY:-}" ]; then upsert_env "UNSPLASH_ACCESS_KEY" "${UNSPLASH_ACCESS_KEY}"; fi
+
 echo "Startup: APP_KEY is set (length ${#APP_KEY})."
 echo "Startup: APP_URL=${APP_URL:-unset}"
 echo "Startup: ASSET_URL=${ASSET_URL:-unset}"
+echo "Startup: FRONTEND_URL=${FRONTEND_URL:-unset}"
 echo "Startup: DB_CONNECTION=${DB_CONNECTION:-unset} DB_HOST=${DB_HOST:-unset} DB_DATABASE=${DB_DATABASE:-unset}"
 
 if [ ! -L public/storage ]; then
