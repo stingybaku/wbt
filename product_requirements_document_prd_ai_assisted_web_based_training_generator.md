@@ -278,7 +278,13 @@ Frontend routes:
 - Owner access: certificate download link available per-viewer in the Viewers panel of the project dashboard
 - Storage: generated PDF stored (S3 or local disk) and linked from `invite_progress`
 
-### 6.8 Other Deferred Items
+### 6.8 Force Password Change on First Login ❌
+- When a platform admin creates an account on behalf of a user, the account is flagged with `must_change_password = true`
+- On first login, the user is redirected to a password change screen before accessing the app
+- Flag is cleared once the password is successfully changed
+- Requires a `must_change_password` boolean column on the `users` table and middleware to intercept requests until the flag is cleared
+
+### 6.9 Other Deferred Items
 - Text-to-Speech / narration (ElevenLabs integration noted for v2)
 - Multi-tenant organization management
 - Localization / translations
@@ -383,6 +389,7 @@ FRONTEND_URL=http://localhost:5173  # used to build viewer invite links in email
 | SCORM 1.2 / xAPI export | Stub exists; requires full packaging logic |
 | Email delivery (Resend) | Drop-in: `MAIL_MAILER=resend` + `RESEND_API_KEY`; no other code changes |
 | Completion certificates | PDF generated on course completion; emailed to viewer; downloadable by owner |
+| Force password change | `must_change_password` flag on admin-created accounts; intercepted at login |
 | Image cache + Pexels | `sourced_images` cache table; Pexels as second provider; video support |
 | Analytics dashboard | Aggregate viewer progress, completion rates per project |
 | Public learner URLs | Versioned snapshots, no invite required |
