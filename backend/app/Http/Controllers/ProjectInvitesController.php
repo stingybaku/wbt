@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 class ProjectInvitesController extends Controller
 {
-    const MAX_INVITES = 5;
+    const MAX_INVITES = 10;
 
     public function index(Request $request, string $projectId)
     {

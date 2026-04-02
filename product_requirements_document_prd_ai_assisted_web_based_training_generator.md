@@ -175,7 +175,7 @@ Project owners can invite external viewers to access the course without requirin
 **Invite flow:**
 - Owner enters an email address and expiry duration (1–365 days) in the Viewers panel on the project detail dashboard
 - Backend sends an email with a unique magic link (`/view/{token}`)
-- **Basic plan limit**: 5 active invites per project (hardcoded; licensing system deferred)
+- **Basic plan limit**: 10 active invites per project (hardcoded; licensing system deferred)
 - Owner can revoke any active invite at any time
 
 **Viewer access:**
@@ -247,7 +247,7 @@ Frontend routes:
 - The 5-viewer limit is hardcoded as a basic plan constant (`MAX_INVITES = 5`)
 - A full licensing/plan system requires a payment gateway
 - **PayPal** is the preferred gateway (to avoid storing card data in the system)
-- All plan enforcement logic is in one place (`ProjectInvitesController::MAX_INVITES`) — easy to loosen when tiers are introduced
+- All plan enforcement logic is in one place (`ProjectInvitesController::MAX_INVITES = 10`) — easy to adjust when tiers are introduced
 
 ### 6.3 Email Delivery ❌ (Production)
 - Currently using Laravel's `log` mail driver in development — emails written to `storage/logs/laravel.log`
@@ -272,7 +272,8 @@ Frontend routes:
 
 ### 6.7 Completion Certificates ❌
 - When a viewer completes a course, a PDF certificate is generated server-side
-- Certificate includes: viewer name (from invite email), course title, completion date, and a unique verification code
+- **Viewer name collected at the email gate** — the gate form asks for both email and full name; name is stored on `invite_progress` and used to personalize the certificate
+- Certificate includes: viewer full name, course title, completion date, and a unique verification code
 - Delivery: automatically emailed to the viewer on completion
 - Owner access: certificate download link available per-viewer in the Viewers panel of the project dashboard
 - Storage: generated PDF stored (S3 or local disk) and linked from `invite_progress`
