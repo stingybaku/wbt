@@ -10,7 +10,7 @@ Post-MVP — Active Development
 Julio (Product / Engineering)
 
 ## Last Updated
-2026-03-31
+2026-04-01
 
 ---
 
@@ -251,8 +251,9 @@ Frontend routes:
 
 ### 6.3 Email Delivery ❌ (Production)
 - Currently using Laravel's `log` mail driver in development — emails written to `storage/logs/laravel.log`
-- Production deployment will require a real SMTP provider (Mailgun, Postmark, SES, etc.)
-- `MAIL_*` env vars are already wired; only the driver and credentials need changing
+- **Planned provider: Resend** (`resend/resend-laravel` package — drops in as a native Laravel mail driver)
+- Migration path: set `MAIL_MAILER=resend` and add `RESEND_API_KEY` — no other code changes required
+- Free tier: 3,000 emails/month, 100/day; includes delivery dashboard
 
 ### 6.4 Publishing / Public URLs ❌
 - Versioned module snapshots not yet implemented
@@ -262,7 +263,21 @@ Frontend routes:
 - Viewer progress is tracked per-invite but there is no aggregate analytics view
 - Deferred to post-MVP
 
-### 6.6 Other Deferred Items
+### 6.6 Image Cache & Multi-Provider Media ❌
+- **Sourced image cache table** (`sourced_images`): stores URL, attribution (photographer, source, license), topic/module context, and keywords
+  - Before calling external image APIs, the enrichment pipeline queries this table by keyword; only hits the API on cache miss
+  - Reduces API call volume and rate-limit exposure when similar topics are generated repeatedly
+- **Pexels API** added as a second image provider alongside Unsplash, alternating to distribute rate limits
+- **Video support** via Pexels Video API — enables a future `video` screen type in the player
+
+### 6.7 Completion Certificates ❌
+- When a viewer completes a course, a PDF certificate is generated server-side
+- Certificate includes: viewer name (from invite email), course title, completion date, and a unique verification code
+- Delivery: automatically emailed to the viewer on completion
+- Owner access: certificate download link available per-viewer in the Viewers panel of the project dashboard
+- Storage: generated PDF stored (S3 or local disk) and linked from `invite_progress`
+
+### 6.8 Other Deferred Items
 - Text-to-Speech / narration (ElevenLabs integration noted for v2)
 - Multi-tenant organization management
 - Localization / translations
@@ -355,7 +370,7 @@ FRONTEND_URL=http://localhost:5173  # used to build viewer invite links in email
 | Generation timeout | Queue worker timeout set to 180s; job timeout 120s |
 | Invite link abuse | Email gate verification + expiry + revocation |
 | Plan limit bypass | Limit checked server-side against active (non-expired, non-revoked) invites |
-| Email delivery in prod | Log driver for dev; production requires real SMTP config |
+| Email delivery in prod | Log driver for dev; Resend planned for prod (`MAIL_MAILER=resend`) |
 
 ---
 
@@ -365,7 +380,9 @@ FRONTEND_URL=http://localhost:5173  # used to build viewer invite links in email
 |---|---|
 | Payment gateway (PayPal) | Unlocks paid plan tiers; viewer slot limits per plan |
 | SCORM 1.2 / xAPI export | Stub exists; requires full packaging logic |
-| Email delivery (SMTP) | Drop-in: change `MAIL_MAILER` and credentials |
+| Email delivery (Resend) | Drop-in: `MAIL_MAILER=resend` + `RESEND_API_KEY`; no other code changes |
+| Completion certificates | PDF generated on course completion; emailed to viewer; downloadable by owner |
+| Image cache + Pexels | `sourced_images` cache table; Pexels as second provider; video support |
 | Analytics dashboard | Aggregate viewer progress, completion rates per project |
 | Public learner URLs | Versioned snapshots, no invite required |
 | ElevenLabs TTS | Screen narration with cost estimation |
