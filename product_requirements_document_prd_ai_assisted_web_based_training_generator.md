@@ -304,7 +304,7 @@ Frontend routes:
 - `localStorage` used for viewer email verification persistence
 
 ### Backend
-- Laravel 12 + SQLite
+- Laravel 12 + PostgreSQL (local via Docker, production via Railway managed PostgreSQL)
 - Laravel Sanctum (token-based auth for owners)
 - REST API — public viewer endpoints are token-gated (no Sanctum)
 - Queue-based AI generation (database queue driver)
@@ -319,6 +319,7 @@ Frontend routes:
 - Entire system runs locally for demo
 - External calls: Claude API (generation), Unsplash API (image search)
 - No AWS or cloud storage dependencies
+- Local database: PostgreSQL via Docker (`postgres:16`) — mirrors production exactly, eliminating SQLite/PostgreSQL type divergence
 
 ### Starting the application
 ```bash
