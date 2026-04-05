@@ -44,4 +44,12 @@ return [
         'model'   => env('ANTHROPIC_MODEL', 'claude-sonnet-4-6'),
     ],
 
+    'voyage' => [
+        'api_key' => env('VOYAGE_API_KEY'),
+    ],
+
+    'pexels' => [
+        'api_key' => env('PEXELS_API_KEY'),
+    ],
+
 ];
