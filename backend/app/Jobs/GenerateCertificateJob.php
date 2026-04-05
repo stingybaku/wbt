@@ -5,15 +5,14 @@ namespace App\Jobs;
 use App\Mail\CertificateMail;
 use App\Models\InviteProgress;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\SerializesModels;
+use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 class GenerateCertificateJob implements ShouldQueue
 {
-    use Queueable, SerializesModels;
+    use Queueable;
 
     public int $tries = 3;
 
