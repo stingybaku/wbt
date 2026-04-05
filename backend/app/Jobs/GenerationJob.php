@@ -74,17 +74,21 @@ class GenerationJob implements ShouldQueue
     }
 
     /**
-     * Fetch an image for the given query from cache, then Unsplash, then Pexels.
-     * Stores any fresh result back into the cache.
+     * Fetch an image for the given query.
+     * Order: cache → Pexels → Unsplash.
+     * Skips any URL already used in the current module run (passed by reference).
      *
      * Returns an array with keys: url, alt_text, source, external_id, photographer, license
-     * Returns null if all sources fail.
+     * Returns null if all sources are exhausted or produce duplicates.
      */
-    private function fetchImage(string $query): ?array
+    private function fetchImage(string $query, array &$usedUrls): ?array
     {
-        // 1. Check the semantic/keyword cache
-        $hit = $this->cache->find($query);
-        if ($hit) {
+        $refined = $this->refineImageQuery($query);
+
+        // 1. Check the semantic/keyword cache — skip if URL already used in this module
+        $hit = $this->cache->find($refined);
+        if ($hit && !in_array($hit->url, $usedUrls)) {
+            $usedUrls[] = $hit->url;
             return [
                 'url'          => $hit->url,
                 'alt_text'     => $hit->topic,
@@ -95,55 +99,21 @@ class GenerationJob implements ShouldQueue
             ];
         }
 
-        // 2. Try Unsplash
-        $accessKey = config('services.unsplash.access_key');
-        if ($accessKey) {
-            try {
-                $res = Http::timeout(8)->get('https://api.unsplash.com/search/photos', [
-                    'query'     => $query,
-                    'per_page'  => 1,
-                    'client_id' => $accessKey,
-                ]);
-
-                $results = $res->json('results', []);
-                if (!empty($results)) {
-                    $photo = $results[0];
-                    $this->cache->store(
-                        $query,
-                        'unsplash',
-                        $photo['id'],
-                        $photo['urls']['regular'],
-                        $photo['user']['name'],
-                        'Unsplash License'
-                    );
-                    return [
-                        'url'          => $photo['urls']['regular'],
-                        'alt_text'     => $photo['alt_description'] ?? $photo['description'] ?? $query,
-                        'source'       => 'unsplash',
-                        'external_id'  => $photo['id'],
-                        'photographer' => $photo['user']['name'],
-                        'license'      => 'Unsplash License',
-                    ];
-                }
-            } catch (\Throwable $e) {
-                Log::warning("fetchImage: Unsplash failed for '{$query}': " . $e->getMessage());
-            }
-        }
-
-        // 3. Try Pexels
-        $pexelsResult = $this->pexels->searchPhoto($query);
-        if ($pexelsResult) {
+        // 2. Try Pexels first (higher free-tier rate limit)
+        $pexelsResult = $this->pexels->searchPhoto($refined);
+        if ($pexelsResult && !in_array($pexelsResult['url'], $usedUrls)) {
             $this->cache->store(
-                $query,
+                $refined,
                 'pexels',
                 $pexelsResult['external_id'],
                 $pexelsResult['url'],
                 $pexelsResult['photographer'],
                 $pexelsResult['license']
             );
+            $usedUrls[] = $pexelsResult['url'];
             return [
                 'url'          => $pexelsResult['url'],
-                'alt_text'     => $query,
+                'alt_text'     => $refined,
                 'source'       => 'pexels',
                 'external_id'  => $pexelsResult['external_id'],
                 'photographer' => $pexelsResult['photographer'],
@@ -151,7 +121,93 @@ class GenerationJob implements ShouldQueue
             ];
         }
 
+        // 3. Fall back to Unsplash
+        $accessKey = config('services.unsplash.access_key');
+        if ($accessKey) {
+            try {
+                $res = Http::timeout(8)->get('https://api.unsplash.com/search/photos', [
+                    'query'       => $refined,
+                    'per_page'    => 3,
+                    'orientation' => 'landscape',
+                    'client_id'   => $accessKey,
+                ]);
+
+                foreach ($res->json('results', []) as $photo) {
+                    $url = $photo['urls']['regular'];
+                    if (in_array($url, $usedUrls)) continue;
+
+                    $this->cache->store(
+                        $refined,
+                        'unsplash',
+                        $photo['id'],
+                        $url,
+                        $photo['user']['name'],
+                        'Unsplash License'
+                    );
+                    $usedUrls[] = $url;
+                    return [
+                        'url'          => $url,
+                        'alt_text'     => $photo['alt_description'] ?? $photo['description'] ?? $refined,
+                        'source'       => 'unsplash',
+                        'external_id'  => $photo['id'],
+                        'photographer' => $photo['user']['name'],
+                        'license'      => 'Unsplash License',
+                    ];
+                }
+            } catch (\Throwable $e) {
+                Log::warning("fetchImage: Unsplash failed for '{$refined}': " . $e->getMessage());
+            }
+        }
+
         return null;
+    }
+
+    /**
+     * Refine a screen title into an image search query that avoids people-centric
+     * terms, which tend to return racially specific results.
+     * Focuses the query on objects, environments, and concepts instead.
+     */
+    private function refineImageQuery(string $query): string
+    {
+        $lower = strtolower(trim($query));
+
+        $peopleTerms = [
+            'employee', 'employees', 'worker', 'workers', 'staff', 'staffing',
+            'team', 'teams', 'group', 'groups', 'people', 'person', 'persons',
+            'man', 'men', 'woman', 'women', 'individual', 'individuals',
+            'manager', 'managers', 'supervisor', 'supervisors', 'leader', 'leaders',
+            'executive', 'executives', 'professional', 'professionals',
+            'nurse', 'nurses', 'doctor', 'doctors', 'patient', 'patients',
+            'student', 'students', 'teacher', 'teachers', 'instructor', 'instructors',
+            'customer', 'customers', 'client', 'clients', 'user', 'users',
+            'colleague', 'colleagues', 'member', 'members', 'participant', 'participants',
+            'operator', 'operators', 'technician', 'technicians',
+        ];
+
+        $stopWords = [
+            'the', 'a', 'an', 'for', 'to', 'of', 'in', 'on', 'at', 'by',
+            'and', 'or', 'with', 'new', 'your', 'our', 'their', 'its',
+            'how', 'why', 'what', 'when', 'where', 'who',
+            'introduction', 'overview', 'understanding', 'effective', 'essential',
+        ];
+
+        $words    = preg_split('/\s+/', $lower);
+        $filtered = array_filter($words, fn($w) =>
+            $w !== '' &&
+            !in_array($w, $peopleTerms) &&
+            !in_array($w, $stopWords)
+        );
+
+        $refined = implode(' ', $filtered);
+
+        // If stripping left too little, just remove people terms but keep stop words
+        if (strlen($refined) < 4) {
+            $refined = implode(' ', array_filter($words, fn($w) =>
+                $w !== '' && !in_array($w, $peopleTerms)
+            ));
+        }
+
+        return trim($refined) ?: $lower;
     }
 
     private function enrichImages(array $moduleJson): array
@@ -160,6 +216,10 @@ class GenerationJob implements ShouldQueue
         $succeeded = 0;
         $skippedNoResults = 0;
         $skippedError = 0;
+
+        // Track URLs already assigned in this module to prevent repetition within a course.
+        // Images can still be reused across different courses via the cache.
+        $usedUrls = [];
 
         // Initialize attribution buckets for both sources
         if (!isset($moduleJson['attribution']['unsplash'])) {
@@ -173,6 +233,7 @@ class GenerationJob implements ShouldQueue
             // Skip screens that already have a real (non-placeholder) image
             $existingUrl = $screen['image']['url'] ?? '';
             if ($existingUrl && !str_contains($existingUrl, 'placeholder')) {
+                $usedUrls[] = $existingUrl; // still mark as used
                 continue;
             }
 
@@ -184,7 +245,7 @@ class GenerationJob implements ShouldQueue
 
             $attempted++;
             try {
-                $result = $this->fetchImage($query);
+                $result = $this->fetchImage($query, $usedUrls);
 
                 if (!$result) {
                     $skippedNoResults++;
@@ -220,6 +281,7 @@ class GenerationJob implements ShouldQueue
                 foreach ($interaction['items'] as &$item) {
                     $existingUrl = $item['image']['url'] ?? '';
                     if ($existingUrl && !str_contains($existingUrl, 'placeholder')) {
+                        $usedUrls[] = $existingUrl;
                         continue;
                     }
 
@@ -228,7 +290,7 @@ class GenerationJob implements ShouldQueue
 
                     $attempted++;
                     try {
-                        $result = $this->fetchImage($query);
+                        $result = $this->fetchImage($query, $usedUrls);
 
                         if (!$result) {
                             $skippedNoResults++;
