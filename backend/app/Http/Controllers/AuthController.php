@@ -23,6 +23,7 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $token,
+            'must_change_password' => (bool) $user->must_change_password,
             'user' => [
                 'id' => $user->id,
                 'email' => $user->email,
