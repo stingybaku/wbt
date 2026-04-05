@@ -7,6 +7,7 @@ use App\Http\Controllers\EventsController;
 use App\Http\Controllers\FrontendTextController;
 use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\ModuleFlagsController;
+use App\Http\Controllers\NotificationsController;
 use App\Http\Controllers\ProjectInvitesController;
 use App\Http\Controllers\ProjectsController;
 use App\Http\Controllers\ProjectSourceController;
@@ -47,4 +48,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/projects/{id}/invites',                                   [ProjectInvitesController::class, 'store']);
     Route::delete('/projects/{id}/invites/{inviteId}',                      [ProjectInvitesController::class, 'revoke']);
     Route::get('/projects/{id}/invites/{inviteId}/certificate',             [ProjectInvitesController::class, 'certificate']);
+
+    // Notifications
+    Route::get('/notifications',                    [NotificationsController::class, 'index']);
+    Route::post('/notifications/read-all',          [NotificationsController::class, 'markAllRead']);
+    Route::post('/notifications/{id}/read',         [NotificationsController::class, 'markRead']);
 });

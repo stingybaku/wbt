@@ -72,3 +72,18 @@ export type ProjectInvite = {
   created_at: string;
   progress: InviteProgress | null;
 };
+
+export type AppNotification = {
+  id: string;
+  type: 'generation_complete' | 'generation_failed' | 'general';
+  title: string;
+  body: string;
+  project_id: string | null;
+  read_at: string | null;
+  created_at: string;
+};
+
+export type NotificationsResponse = {
+  notifications: AppNotification[];
+  unread_count: number;
+};

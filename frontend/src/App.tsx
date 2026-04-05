@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { TopNav } from './components/TopNav';
 import { LoginForm } from './components/LoginForm';
 import { ChangePasswordPage } from './components/ChangePasswordPage';
 import { ProjectsView } from './components/ProjectsView';
@@ -16,6 +17,18 @@ function RequireAuth() {
   const { token } = useAuth();
   if (!token) return <Navigate to="/login" replace />;
   return <Outlet />;
+}
+
+// Layout with the top nav bar — used for all main app pages except players
+function AppLayout() {
+  return (
+    <>
+      <TopNav />
+      <main className="app-shell with-topnav">
+        <Outlet />
+      </main>
+    </>
+  );
 }
 
 function LoginPage() {
@@ -49,7 +62,7 @@ function LoginPage() {
 }
 
 function ProjectsPage() {
-  const { token, user, clearAuth } = useAuth();
+  const { token } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,16 +85,14 @@ function ProjectsPage() {
   }, []);
 
   return (
-    <main className="app-shell">
+    <>
       {error ? <div className="error-banner">{error}</div> : null}
       <ProjectsView
-        email={user?.email ?? ''}
         projects={projects}
         loading={loadingProjects}
         onRefresh={loadProjects}
-        onLogout={clearAuth}
       />
-    </main>
+    </>
   );
 }
 
@@ -91,13 +102,20 @@ const router = createBrowserRouter([
   {
     element: <RequireAuth />,
     children: [
-      { path: '/', element: <Navigate to="/projects" replace /> },
+      // Pages without top nav (full-screen or forced flows)
       { path: '/change-password', element: <ChangePasswordPage /> },
-      { path: '/projects', element: <ProjectsPage /> },
-      { path: '/projects/new', element: <CreateProjectWizard /> },
-      { path: '/projects/:id', element: <ProjectDetailView /> },
-      { path: '/projects/:id/review', element: <ModuleReviewPage /> },
       { path: '/projects/:id/play', element: <WBTPlayerPage /> },
+      // Main app layout with top nav
+      {
+        element: <AppLayout />,
+        children: [
+          { path: '/', element: <Navigate to="/projects" replace /> },
+          { path: '/projects', element: <ProjectsPage /> },
+          { path: '/projects/new', element: <CreateProjectWizard /> },
+          { path: '/projects/:id', element: <ProjectDetailView /> },
+          { path: '/projects/:id/review', element: <ModuleReviewPage /> },
+        ],
+      },
     ],
   },
 ]);

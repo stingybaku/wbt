@@ -4,6 +4,8 @@ namespace App\Jobs;
 
 use App\Models\Module;
 use App\Models\Project;
+use App\Notifications\GenerationCompleteNotification;
+use App\Notifications\GenerationFailedNotification;
 use App\Services\GenerationService;
 use App\Services\ImageCacheService;
 use App\Services\PexelsService;
@@ -61,9 +63,12 @@ class GenerationJob implements ShouldQueue
                 'cover_image_url'  => $this->extractCoverImage($moduleJson),
             ]);
 
+            $project->user->notify(new GenerationCompleteNotification($project));
+
             Log::info("GenerationJob succeeded for project {$this->projectId}");
         } catch (\Throwable $e) {
             $this->markFailed($module, $e->getMessage());
+            $project->user->notify(new GenerationFailedNotification($project));
             Log::error("GenerationJob failed for project {$this->projectId}: " . $e->getMessage());
         }
     }

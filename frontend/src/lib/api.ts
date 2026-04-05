@@ -3,6 +3,7 @@ import type {
   FrontendTextsResponse,
   LoginResponse,
   ModuleResponse,
+  NotificationsResponse,
   ProjectsResponse,
 } from './types';
 import type { Module } from './moduleSchema';
@@ -191,6 +192,18 @@ export function updateViewerProgress(
   payload: { current_screen_index: number; total_screens: number }
 ): Promise<{ ok: boolean }> {
   return request(`/view/${viewerToken}/progress`, { method: 'POST', body: payload });
+}
+
+export function fetchNotifications(token: string): Promise<NotificationsResponse> {
+  return request<NotificationsResponse>('/notifications', { token });
+}
+
+export function markNotificationRead(token: string, id: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/notifications/${id}/read`, { method: 'POST', token });
+}
+
+export function markAllNotificationsRead(token: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>('/notifications/read-all', { method: 'POST', token });
 }
 
 export function fetchFrontendTexts(routeKey: string): Promise<FrontendTextsResponse> {

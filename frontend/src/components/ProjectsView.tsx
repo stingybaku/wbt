@@ -5,14 +5,12 @@ import { createTextResolver, type FrontendTextMap } from '../lib/text';
 import type { Project } from '../lib/types';
 
 type ProjectsViewProps = {
-  email: string;
   projects: Project[];
   loading: boolean;
   onRefresh: () => Promise<void>;
-  onLogout: () => void;
 };
 
-export function ProjectsView({ email, projects, loading, onRefresh, onLogout }: ProjectsViewProps) {
+export function ProjectsView({ projects, loading, onRefresh }: ProjectsViewProps) {
   const routeKey = 'projects.list';
   const [frontendTexts, setFrontendTexts] = useState<FrontendTextMap | null>(null);
   const hasLoggedFetchError = useRef(false);
@@ -39,9 +37,6 @@ export function ProjectsView({ email, projects, loading, onRefresh, onLogout }: 
       <header className="topbar">
         <div>
           <h1>{t('projects.title', 'Projects')}</h1>
-          <p className="muted">
-            {t('projects.subtitle_signed_in_as', 'Signed in as')} {email}
-          </p>
         </div>
         <div className="actions">
           <Link to="/projects/new">
@@ -49,9 +44,6 @@ export function ProjectsView({ email, projects, loading, onRefresh, onLogout }: 
           </Link>
           <button type="button" className="ghost" onClick={onRefresh} disabled={loading}>
             {loading ? t('projects.refreshing_button', 'Refreshing...') : t('projects.refresh_button', 'Refresh')}
-          </button>
-          <button type="button" className="ghost" onClick={onLogout}>
-            {t('projects.logout_button', 'Logout')}
           </button>
         </div>
       </header>
