@@ -12,7 +12,7 @@ class EmbeddingService
 
     public function __construct()
     {
-        $this->apiKey = config('services.voyage.api_key', '');
+        $this->apiKey = config('services.voyage.api_key') ?? '';
     }
 
     /**
