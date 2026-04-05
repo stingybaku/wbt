@@ -124,9 +124,11 @@ class ProjectInvitesController extends Controller
             'progress'     => $progress ? [
                 'current_screen_index' => $progress->current_screen_index,
                 'total_screens'        => $progress->total_screens,
-                'percent'              => $progress->total_screens
-                    ? round(($progress->current_screen_index / $progress->total_screens) * 100)
-                    : 0,
+                'percent'              => $progress->completed_at
+                    ? 100
+                    : ($progress->total_screens
+                        ? round(($progress->current_screen_index / $progress->total_screens) * 100)
+                        : 0),
                 'completed_at'   => $progress->completed_at?->toIso8601String(),
                 'last_active_at' => $progress->last_active_at?->toIso8601String(),
             ] : null,
