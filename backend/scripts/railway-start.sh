@@ -102,6 +102,7 @@ if [ -n "${MAIL_FROM_NAME:-}" ]; then upsert_env "MAIL_FROM_NAME" "${MAIL_FROM_N
 if [ -n "${ANTHROPIC_API_KEY:-}" ]; then upsert_env "ANTHROPIC_API_KEY" "${ANTHROPIC_API_KEY}"; fi
 if [ -n "${ANTHROPIC_MODEL:-}" ]; then upsert_env "ANTHROPIC_MODEL" "${ANTHROPIC_MODEL}"; fi
 if [ -n "${UNSPLASH_ACCESS_KEY:-}" ]; then upsert_env "UNSPLASH_ACCESS_KEY" "${UNSPLASH_ACCESS_KEY}"; fi
+if [ -n "${RESEND_API_KEY:-}" ]; then upsert_env "RESEND_API_KEY" "${RESEND_API_KEY}"; fi
 
 echo "Startup: APP_KEY is set (length ${#APP_KEY})."
 echo "Startup: APP_URL=${APP_URL:-unset}"
