@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ChangePasswordController;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\FrontendTextController;
 use App\Http\Controllers\ModuleController;
@@ -23,6 +24,7 @@ Route::post('/view/{token}/progress',    [ViewerController::class, 'updateProgre
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::post('/auth/change-password', ChangePasswordController::class);
 
     Route::get('/projects', [ProjectsController::class, 'index']);
     Route::post('/projects', [ProjectsController::class, 'store']);

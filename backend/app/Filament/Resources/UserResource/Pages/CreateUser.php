@@ -8,4 +8,12 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateUser extends CreateRecord
 {
     protected static string $resource = UserResource::class;
+
+    protected function afterCreate(): void
+    {
+        $this->record->update([
+            'must_change_password' => true,
+            'email_verified_at'    => now(),
+        ]);
+    }
 }

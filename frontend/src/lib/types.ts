@@ -8,6 +8,7 @@ export type User = {
 
 export type LoginResponse = {
   token: string;
+  must_change_password: boolean;
   user: User;
 };
 

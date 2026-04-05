@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginForm } from './components/LoginForm';
+import { ChangePasswordPage } from './components/ChangePasswordPage';
 import { ProjectsView } from './components/ProjectsView';
 import { ProjectDetailView } from './components/ProjectDetailView';
 import { CreateProjectWizard } from './components/CreateProjectWizard';
@@ -31,7 +32,7 @@ function LoginPage() {
     try {
       const result = await login(email, password);
       setAuth(result.token, result.user);
-      navigate('/projects');
+      navigate(result.must_change_password ? '/change-password' : '/projects');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -91,6 +92,7 @@ const router = createBrowserRouter([
     element: <RequireAuth />,
     children: [
       { path: '/', element: <Navigate to="/projects" replace /> },
+      { path: '/change-password', element: <ChangePasswordPage /> },
       { path: '/projects', element: <ProjectsPage /> },
       { path: '/projects/new', element: <CreateProjectWizard /> },
       { path: '/projects/:id', element: <ProjectDetailView /> },

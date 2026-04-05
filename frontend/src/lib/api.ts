@@ -45,6 +45,13 @@ export function logout(token: string): Promise<{ ok: boolean }> {
   return request<{ ok: boolean }>('/auth/logout', { method: 'POST', token });
 }
 
+export function changePassword(
+  token: string,
+  payload: { current_password: string; new_password: string; new_password_confirmation: string }
+): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>('/auth/change-password', { method: 'POST', token, body: payload });
+}
+
 export function fetchProjects(token: string): Promise<ProjectsResponse> {
   return request<ProjectsResponse>('/projects', { token });
 }
