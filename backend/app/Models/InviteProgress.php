@@ -11,9 +11,11 @@ class InviteProgress extends Model
 
     protected $fillable = [
         'invite_id',
+        'viewer_name',
         'current_screen_index',
         'total_screens',
         'completed_at',
+        'certificate_path',
         'last_active_at',
     ];
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchProject, fetchModule, generateModule, fetchInvites, createInvite, revokeInvite } from '../lib/api';
+import { fetchProject, fetchModule, generateModule, fetchInvites, createInvite, revokeInvite, downloadCertificate } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import type { Project, ModuleRecord, ProjectInvite } from '../lib/types';
 
@@ -172,6 +172,8 @@ export function ProjectDetailView() {
               moduleReady={module?.status === 'generated'}
               onInvite={handleInvite}
               onRevoke={handleRevoke}
+              authToken={token ?? ''}
+              projectId={id ?? ''}
             />
           </div>
         </div>
@@ -253,17 +255,23 @@ function ViewersPanel({
   moduleReady,
   onInvite,
   onRevoke,
+  authToken,
+  projectId,
 }: {
   invites: ProjectInvite[];
   moduleReady: boolean;
   onInvite: (email: string, expiresDays: number) => Promise<void>;
   onRevoke: (inviteId: string) => Promise<void>;
+  authToken: string;
+  projectId: string;
 }) {
   const [email, setEmail] = useState('');
   const [expiresDays, setExpiresDays] = useState(30);
   const [sending, setSending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<{ [inviteId: string]: string }>({});
 
   const activeInvites = invites.filter(i => i.is_active);
   const slotsLeft = MAX_INVITES - activeInvites.length;
@@ -288,6 +296,21 @@ function ViewersPanel({
       await onRevoke(inviteId);
     } finally {
       setRevoking(null);
+    }
+  }
+
+  async function handleDownloadCertificate(inviteId: string) {
+    setDownloading(inviteId);
+    setDownloadError(prev => ({ ...prev, [inviteId]: '' }));
+    try {
+      await downloadCertificate(authToken, projectId, inviteId);
+    } catch (err: unknown) {
+      setDownloadError(prev => ({
+        ...prev,
+        [inviteId]: err instanceof Error ? err.message : 'Download failed.',
+      }));
+    } finally {
+      setDownloading(null);
     }
   }
 
@@ -385,6 +408,22 @@ function ViewersPanel({
                   <span className="muted" style={{ fontSize: '0.75rem' }}>Not started</span>
                 )}
               </div>
+
+              {invite.progress?.completed_at && (
+                <div className="invite-certificate-action">
+                  <button
+                    type="button"
+                    className="ghost invite-certificate-btn"
+                    onClick={() => handleDownloadCertificate(invite.id)}
+                    disabled={downloading === invite.id}
+                  >
+                    {downloading === invite.id ? 'Downloading…' : 'Download Certificate'}
+                  </button>
+                  {downloadError[invite.id] && (
+                    <p className="invite-certificate-error">{downloadError[invite.id]}</p>
+                  )}
+                </div>
+              )}
 
               {invite.is_active && (
                 <button

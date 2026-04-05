@@ -5,6 +5,7 @@ import { WBTPlayer } from './WBTPlayer';
 import type { Module } from '../lib/moduleSchema';
 
 const STORAGE_KEY = (token: string) => `viewer_verified_${token}`;
+const STORAGE_NAME_KEY = (token: string) => `viewer_name_${token}`;
 
 type ViewerState =
   | { phase: 'gate' }
@@ -16,6 +17,7 @@ export function ViewerPlayerPage() {
   const { token } = useParams<{ token: string }>();
   const [state, setState] = useState<ViewerState>({ phase: 'gate' });
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [gateError, setGateError] = useState<string | null>(null);
 
@@ -24,6 +26,8 @@ export function ViewerPlayerPage() {
     if (!token) return;
     const saved = localStorage.getItem(STORAGE_KEY(token));
     if (saved) {
+      const savedName = localStorage.getItem(STORAGE_NAME_KEY(token));
+      if (savedName) setName(savedName);
       loadCourse(token);
     }
   }, [token]);
@@ -52,8 +56,9 @@ export function ViewerPlayerPage() {
     setGateError(null);
     setVerifying(true);
     try {
-      await verifyViewer(token, email.trim());
+      await verifyViewer(token, email.trim(), name.trim());
       localStorage.setItem(STORAGE_KEY(token), email.trim());
+      localStorage.setItem(STORAGE_NAME_KEY(token), name.trim());
       await loadCourse(token);
     } catch (err: unknown) {
       setGateError(err instanceof Error ? err.message : 'Verification failed.');
@@ -74,19 +79,27 @@ export function ViewerPlayerPage() {
           <div className="viewer-gate-brand">WBT Forge</div>
           <h1 className="viewer-gate-title">Access your course</h1>
           <p className="viewer-gate-subtitle">
-            Enter the email address to which this invitation was sent.
+            Enter your name and the email address to which this invitation was sent.
           </p>
           <form className="viewer-gate-form" onSubmit={handleGateSubmit}>
+            <input
+              type="text"
+              placeholder="Your full name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              required
+              autoFocus
+              disabled={verifying}
+            />
             <input
               type="email"
               placeholder="you@example.com"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              autoFocus
               disabled={verifying}
             />
-            <button type="submit" disabled={verifying || !email.trim()}>
+            <button type="submit" disabled={verifying || !name.trim() || !email.trim()}>
               {verifying ? 'Verifying…' : 'Continue →'}
             </button>
             {gateError && <p className="viewer-gate-error">{gateError}</p>}
