@@ -47,7 +47,10 @@ class ViewerController extends Controller
      */
     public function verify(Request $request, string $token)
     {
-        $data = $request->validate(['email' => 'required|email']);
+        $data = $request->validate([
+            'email' => 'required|email',
+            'name'  => 'required|string|max:255',
+        ]);
 
         $invite = ProjectInvite::where('token', $token)->first();
 
@@ -58,6 +61,11 @@ class ViewerController extends Controller
         if (strtolower(trim($data['email'])) !== strtolower($invite->email)) {
             return response()->json(['message' => 'The email address does not match this invitation.'], 403);
         }
+
+        InviteProgress::updateOrCreate(
+            ['invite_id' => $invite->id],
+            ['viewer_name' => trim($data['name'])]
+        );
 
         return response()->json(['ok' => true]);
     }
@@ -80,6 +88,10 @@ class ViewerController extends Controller
 
         $isComplete = $data['current_screen_index'] >= $data['total_screens'] - 1;
 
+        $alreadyCompleted = InviteProgress::where('invite_id', $invite->id)
+            ->whereNotNull('completed_at')
+            ->exists();
+
         InviteProgress::updateOrCreate(
             ['invite_id' => $invite->id],
             [
@@ -91,6 +103,10 @@ class ViewerController extends Controller
                     : null,
             ]
         );
+
+        if ($isComplete && !$alreadyCompleted) {
+            \App\Jobs\GenerateCertificateJob::dispatch($invite->id);
+        }
 
         return response()->json(['ok' => true]);
     }

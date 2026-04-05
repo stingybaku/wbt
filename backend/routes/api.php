@@ -43,7 +43,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/projects/{id}/events', [EventsController::class, 'store']);
 
     // Invites
-    Route::get('/projects/{id}/invites',              [ProjectInvitesController::class, 'index']);
-    Route::post('/projects/{id}/invites',             [ProjectInvitesController::class, 'store']);
-    Route::delete('/projects/{id}/invites/{inviteId}', [ProjectInvitesController::class, 'revoke']);
+    Route::get('/projects/{id}/invites',                                    [ProjectInvitesController::class, 'index']);
+    Route::post('/projects/{id}/invites',                                   [ProjectInvitesController::class, 'store']);
+    Route::delete('/projects/{id}/invites/{inviteId}',                      [ProjectInvitesController::class, 'revoke']);
+    Route::get('/projects/{id}/invites/{inviteId}/certificate',             [ProjectInvitesController::class, 'certificate']);
 });

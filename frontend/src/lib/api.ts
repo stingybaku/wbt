@@ -165,8 +165,25 @@ export function fetchViewerModule(viewerToken: string): Promise<{
   return request(`/view/${viewerToken}`);
 }
 
-export function verifyViewer(viewerToken: string, email: string): Promise<{ ok: boolean }> {
-  return request(`/view/${viewerToken}/verify`, { method: 'POST', body: { email } });
+export function verifyViewer(viewerToken: string, email: string, name: string): Promise<{ ok: boolean }> {
+  return request(`/view/${viewerToken}/verify`, { method: 'POST', body: { email, name } });
+}
+
+export async function downloadCertificate(token: string, projectId: string, inviteId: string): Promise<void> {
+  const response = await fetch(`${apiBase}/projects/${projectId}/invites/${inviteId}/certificate`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/pdf',
+    },
+  });
+  if (!response.ok) throw new Error('Certificate not available yet.');
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'certificate.pdf';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function updateViewerProgress(

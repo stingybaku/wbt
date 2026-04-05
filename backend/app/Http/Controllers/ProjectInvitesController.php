@@ -7,6 +7,7 @@ use App\Models\ProjectInvite;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProjectInvitesController extends Controller
@@ -86,6 +87,27 @@ class ProjectInvitesController extends Controller
         $invite->update(['revoked_at' => now()]);
 
         return response()->json(['ok' => true]);
+    }
+
+    public function certificate(Request $request, string $projectId, string $inviteId)
+    {
+        $project = Project::where('id', $projectId)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $invite = ProjectInvite::where('id', $inviteId)
+            ->where('project_id', $project->id)
+            ->with('progress')
+            ->firstOrFail();
+
+        if (!$invite->progress || !$invite->progress->certificate_path) {
+            return response()->json(['message' => 'Certificate not yet generated.'], 404);
+        }
+
+        return Storage::disk('local')->download(
+            $invite->progress->certificate_path,
+            'certificate.pdf'
+        );
     }
 
     private function formatInvite(ProjectInvite $invite): array
