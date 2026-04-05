@@ -164,8 +164,8 @@ class GenerationJob implements ShouldQueue
 
     /**
      * Refine a screen title into an image search query that avoids people-centric
-     * terms, which tend to return racially specific results.
-     * Focuses the query on objects, environments, and concepts instead.
+     * and racially specific results. Also strips child-related terms unless the
+     * content is genuinely about children/youth (detected from the original query).
      */
     private function refineImageQuery(string $query): string
     {
@@ -183,6 +183,16 @@ class GenerationJob implements ShouldQueue
             'colleague', 'colleagues', 'member', 'members', 'participant', 'participants',
             'operator', 'operators', 'technician', 'technicians',
         ];
+
+        // Strip child-related terms unless the content is actually about children
+        if (!$this->isChildRelatedContent($lower)) {
+            $peopleTerms = array_merge($peopleTerms, [
+                'child', 'children', 'kid', 'kids', 'boy', 'boys', 'girl', 'girls',
+                'baby', 'babies', 'infant', 'infants', 'toddler', 'toddlers',
+                'teen', 'teens', 'teenager', 'teenagers', 'adolescent', 'adolescents',
+                'juvenile', 'juveniles', 'minor', 'minors',
+            ]);
+        }
 
         $stopWords = [
             'the', 'a', 'an', 'for', 'to', 'of', 'in', 'on', 'at', 'by',
@@ -208,6 +218,27 @@ class GenerationJob implements ShouldQueue
         }
 
         return trim($refined) ?: $lower;
+    }
+
+    /**
+     * Detect whether a query is genuinely about children/youth content,
+     * in which case child imagery should be permitted.
+     */
+    private function isChildRelatedContent(string $lower): bool
+    {
+        $childTopics = [
+            'child', 'children', 'kid', 'kids', 'youth', 'young learner',
+            'pediatric', 'paediatric', 'infant', 'toddler', 'baby',
+            'teen', 'teenager', 'adolescent', 'juvenile',
+            'school', 'kindergarten', 'nursery', 'daycare', 'childcare',
+            'parenting', 'child development', 'child safety', 'safeguarding',
+        ];
+
+        foreach ($childTopics as $term) {
+            if (str_contains($lower, $term)) return true;
+        }
+
+        return false;
     }
 
     private function enrichImages(array $moduleJson): array
