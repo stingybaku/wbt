@@ -2818,9 +2818,10 @@ input[type="range"]:focus {
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   gap: 0;
+  white-space: normal;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
               box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
               opacity 0.2s;
@@ -3098,6 +3099,87 @@ input[type="range"]:focus {
 .player-feedback-icon {
   font-weight: 700;
   flex-shrink: 0;
+}
+
+/* ── Screen sidenav ───────────────────────────────────────────────────────── */
+
+.player-sidenav {
+  position: fixed;
+  right: 1.1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+  padding: 0.5rem 0;
+}
+
+.player-sidenav-item {
+  display: flex;
+  align-items: center;
+  flex-direction: row-reverse;
+  gap: 0.45rem;
+  background: transparent;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.player-sidenav-item:hover:not(:disabled) {
+  background: transparent;
+  box-shadow: none;
+}
+
+.player-sidenav-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+  transition: background 0.2s, transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.player-sidenav-item.visited .player-sidenav-dot {
+  background: #10b981;
+}
+
+.player-sidenav-item.active .player-sidenav-dot {
+  background: #111827;
+  transform: scale(1.45);
+}
+
+.player-sidenav-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #374151;
+  background: white;
+  border-radius: 6px;
+  padding: 3px 9px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(6px);
+  transition: opacity 0.18s, transform 0.18s;
+}
+
+.player-sidenav-item.active .player-sidenav-label {
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Show labels when hovering the whole nav */
+.player-sidenav:hover .player-sidenav-label {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
 }
 
 /* ── Navigation ───────────────────────────────────────────────────────────── */
