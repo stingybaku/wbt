@@ -195,10 +195,23 @@ class GenerationJob implements ShouldQueue
         }
 
         $stopWords = [
+            // Articles / prepositions / conjunctions
             'the', 'a', 'an', 'for', 'to', 'of', 'in', 'on', 'at', 'by',
-            'and', 'or', 'with', 'new', 'your', 'our', 'their', 'its',
-            'how', 'why', 'what', 'when', 'where', 'who',
+            'and', 'or', 'with', 'new', 'your', 'our', 'their', 'its', 'is',
+            'how', 'why', 'what', 'when', 'where', 'who', 'that', 'this',
+            // Generic lesson-structure words (never useful in an image search)
             'introduction', 'overview', 'understanding', 'effective', 'essential',
+            'key', 'basic', 'basics', 'fundamental', 'fundamentals',
+            'principle', 'principles', 'aspect', 'aspects', 'element', 'elements',
+            'approach', 'approaches', 'strategy', 'strategies', 'concept', 'concepts',
+            'method', 'methods', 'process', 'processes', 'procedure', 'procedures',
+            'step', 'steps', 'stage', 'stages', 'phase', 'phases',
+            'type', 'types', 'kind', 'kinds', 'form', 'forms',
+            'role', 'roles', 'importance', 'impact', 'benefit', 'benefits',
+            'best', 'practice', 'practices', 'guideline', 'guidelines',
+            'general', 'common', 'main', 'major', 'various', 'different',
+            'important', 'critical', 'significant', 'relevant', 'applicable',
+            'training', 'course', 'module', 'lesson', 'section', 'unit', 'topic',
         ];
 
         $words    = preg_split('/\s+/', $lower);
@@ -219,10 +232,10 @@ class GenerationJob implements ShouldQueue
 
         $refined = trim($refined) ?: $lower;
 
-        // Limit to the 3 most meaningful words to keep the query focused
+        // Limit to 4 meaningful words — enough context without diluting relevance
         $refinedWords = preg_split('/\s+/', $refined);
-        if (count($refinedWords) > 3) {
-            $refined = implode(' ', array_slice($refinedWords, 0, 3));
+        if (count($refinedWords) > 4) {
+            $refined = implode(' ', array_slice($refinedWords, 0, 4));
         }
 
         // Append a grounding suffix for very abstract single-word queries so stock
