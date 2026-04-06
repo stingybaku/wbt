@@ -95,41 +95,31 @@ export function ProjectDetailView() {
   }
 
   if (loading) {
-    return (
-      <main className="app-shell">
-        <section className="layout"><p className="muted">Loading...</p></section>
-      </main>
-    );
+    return <section className="layout"><p className="muted">Loading...</p></section>;
   }
 
   if (error || !project) {
     return (
-      <main className="app-shell">
-        <section className="layout">
-          <div className="error-banner">{error ?? 'Project not found'}</div>
-          <Link to="/projects">← Back to projects</Link>
-        </section>
-      </main>
+      <section className="layout">
+        <div className="error-banner">{error ?? 'Project not found'}</div>
+        <Link to="/projects">← Back to projects</Link>
+      </section>
     );
   }
 
   return (
-    <main className="app-shell">
+    <>
+      <div
+        className={`project-detail-hero${project.cover_image_url ? '' : ' project-detail-hero--no-image'}`}
+        style={project.cover_image_url ? { backgroundImage: `url(${project.cover_image_url})` } : undefined}
+      >
+        <div className="project-detail-hero-inner">
+          <Link to="/projects" className="project-detail-hero-back">← Projects</Link>
+          <h1>{project.title}</h1>
+        </div>
+      </div>
+
       <section className="layout">
-        {project.cover_image_url && (
-          <div
-            className="project-detail-hero"
-            style={{ backgroundImage: `url(${project.cover_image_url})` }}
-          />
-        )}
-
-        <header className="topbar">
-          <div>
-            <Link to="/projects" className="muted">← Projects</Link>
-            <h1>{project.title}</h1>
-          </div>
-        </header>
-
         <div className="detail-grid">
           {/* Left column */}
           <div className="detail-main">
@@ -178,7 +168,7 @@ export function ProjectDetailView() {
           </div>
         </div>
       </section>
-    </main>
+    </>
   );
 }
 
