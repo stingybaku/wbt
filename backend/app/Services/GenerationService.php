@@ -110,6 +110,7 @@ REQUIRED JSON SCHEMA:
     "source_summary": string (1–2 sentences describing the source),
     "created_at": ISO 8601 datetime string
   },
+  "sources": [string, ...],  // 1–5 strings: titles/URLs of source documents or references cited. If none identifiable in the content, use a single generic entry like "Provided course material"
   "learning_objectives": [string, ...],  // minimum 1
   "screens": [...],  // minimum 10, see screen types below
   "assessment": {
@@ -119,7 +120,6 @@ REQUIRED JSON SCHEMA:
   "attribution": {
     "unsplash": []
   },
-  "sources": [string, ...],  // 1–5 strings: titles/URLs of source documents or references cited. If none identifiable in the content, use a single generic entry like "Provided course material"
   "review_flags": []
 }
 
