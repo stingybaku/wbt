@@ -174,14 +174,18 @@ export function WBTPlayer({
   projectTitle,
   viewerMode = false,
   initialScreenIndex = 0,
+  initialAnswers,
   onScreenChange,
+  onAnswered,
 }: {
   module: Module;
   projectId: string;
   projectTitle?: string;
   viewerMode?: boolean;
   initialScreenIndex?: number;
+  initialAnswers?: Record<string, QuestionAnswer>;
   onScreenChange?: (index: number, total: number) => void;
+  onAnswered?: (screenId: string, answer: QuestionAnswer) => void;
 }) {
   const screens = module.screens;
 
@@ -197,7 +201,7 @@ export function WBTPlayer({
     return new Set<number>([idx, ...(saved?.visited ?? [])]);
   });
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, QuestionAnswer>>(
-    () => saved?.answers ?? {}
+    () => saved?.answers ?? initialAnswers ?? {}
   );
 
   const currentScreen = screens[screenIndex];
@@ -234,6 +238,7 @@ export function WBTPlayer({
 
   function handleAnswered(screenId: string, answer: QuestionAnswer) {
     setQuestionAnswers(prev => ({ ...prev, [screenId]: answer }));
+    onAnswered?.(screenId, answer);
   }
 
   if (phase === 'cover') {
