@@ -107,6 +107,12 @@ export function ProjectDetailView() {
     );
   }
 
+  const screenCount  = module?.module_json?.screens.length ?? null;
+  const duration     = module?.module_json?.meta.duration_minutes ?? null;
+  const activeViewers    = invites.filter(i => i.is_active).length;
+  const completedViewers = invites.filter(i => i.progress?.completed_at).length;
+  const openFlags = (module?.module_json?.review_flags ?? []).filter((f: { status: string }) => f.status === 'open').length;
+
   return (
     <>
       <div
@@ -120,11 +126,53 @@ export function ProjectDetailView() {
       </div>
 
       <section className="layout">
+        {/* Stats strip */}
+        <div className="stats-strip">
+          <div className="stat-card">
+            <span className="stat-value">{screenCount ?? '—'}</span>
+            <span className="stat-label">Screens</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-value">
+              {duration ? <>{duration}<span className="stat-value-sub"> min</span></> : '—'}
+            </span>
+            <span className="stat-label">Duration</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-value">
+              {activeViewers}<span className="stat-value-sub"> / 10</span>
+            </span>
+            <span className="stat-label">Active Viewers</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-value">
+              {completedViewers}
+              {invites.length > 0 && <span className="stat-value-sub"> of {invites.length}</span>}
+            </span>
+            <span className="stat-label">Completed</span>
+          </div>
+        </div>
+
+        {/* Primary actions */}
+        {module?.status === 'generated' && (
+          <div className="detail-actions">
+            <Link to={`/projects/${id}/review`}>
+              <button type="button">Review module</button>
+            </Link>
+            <Link to={`/projects/${id}/play`}>
+              <button type="button" className="ghost">Preview</button>
+            </Link>
+            {openFlags > 0 && (
+              <span className="muted">{openFlags} open flag{openFlags !== 1 ? 's' : ''}</span>
+            )}
+          </div>
+        )}
+
         <div className="detail-grid">
           {/* Left column */}
           <div className="detail-main">
             <div className="card">
-              <h2>Training Module</h2>
+              <h2>Module</h2>
               <ModuleStatusPanel
                 module={module}
                 hasSource={!!project.source_type}
@@ -183,14 +231,27 @@ function ModuleStatusPanel({
   onRetry: () => void;
 }) {
   if (!module && !hasSource) {
-    return <p className="muted">No content source attached. <Link to="/projects/new">Start a new project</Link> to upload content.</p>;
+    return (
+      <div className="module-status-visual">
+        <div className="module-status-icon module-status-icon--pending">○</div>
+        <div className="module-status-text">
+          <strong>No source attached</strong>
+          <p>Start a new project to upload content.</p>
+        </div>
+      </div>
+    );
   }
 
   if (!module || module.status === 'generating') {
     return (
-      <div>
-        <p className="muted"><span className="generating-indicator">●</span> Generating your training module...</p>
-        <p className="muted" style={{ fontSize: '0.85em' }}>This can take up to 60 seconds. The page will update automatically.</p>
+      <div className="module-status-visual">
+        <div className="module-status-icon module-status-icon--generating">
+          <span className="generating-indicator">●</span>
+        </div>
+        <div className="module-status-text">
+          <strong>Generating…</strong>
+          <p>This can take a few minutes. The page will update automatically.</p>
+        </div>
       </div>
     );
   }
@@ -198,39 +259,40 @@ function ModuleStatusPanel({
   if (module.status === 'failed') {
     return (
       <div>
-        <div className="error-banner">{module.generation_error ?? 'Generation failed.'}</div>
-        <button type="button" onClick={onRetry} disabled={retrying} style={{ marginTop: '0.75rem' }}>
-          {retrying ? 'Retrying...' : 'Retry generation'}
+        <div className="module-status-visual" style={{ marginBottom: '0.75rem' }}>
+          <div className="module-status-icon module-status-icon--failed">✕</div>
+          <div className="module-status-text">
+            <strong>Generation failed</strong>
+            <p>{module.generation_error ?? 'An unknown error occurred.'}</p>
+          </div>
+        </div>
+        <button type="button" onClick={onRetry} disabled={retrying}>
+          {retrying ? 'Retrying…' : 'Retry generation'}
         </button>
       </div>
     );
   }
 
   if (module.status === 'generated') {
-    const screenCount = module.module_json?.screens.length ?? 0;
-    const title = module.module_json?.meta.title ?? 'Untitled';
+    const title      = module.module_json?.meta.title ?? 'Untitled';
     const objectives = module.module_json?.learning_objectives ?? [];
-    const openFlags = (module.module_json?.review_flags ?? []).filter(f => f.status === 'open').length;
 
     return (
       <div>
-        <p><strong>{title}</strong> — {screenCount} screens</p>
+        <div className="module-status-visual" style={{ marginBottom: objectives.length ? '0.75rem' : 0 }}>
+          <div className="module-status-icon module-status-icon--success">✓</div>
+          <div className="module-status-text">
+            <strong>{title}</strong>
+            <p>Ready to review and share with learners.</p>
+          </div>
+        </div>
         {objectives.length > 0 && (
-          <ul style={{ marginTop: '0.5rem', paddingLeft: '1.25rem' }}>
-            {objectives.map((obj, i) => <li key={i} className="muted" style={{ fontSize: '0.875rem' }}>{obj}</li>)}
+          <ul style={{ paddingLeft: '1.25rem', margin: 0 }}>
+            {objectives.map((obj, i) => (
+              <li key={i} className="muted" style={{ fontSize: '0.82rem', marginBottom: '0.2rem' }}>{obj}</li>
+            ))}
           </ul>
         )}
-        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Link to={`/projects/${module.project_id}/review`}>
-            <button type="button">Review module</button>
-          </Link>
-          <Link to={`/projects/${module.project_id}/play`}>
-            <button type="button" className="ghost">Preview</button>
-          </Link>
-          {openFlags > 0 && (
-            <span className="muted">{openFlags} open flag{openFlags !== 1 ? 's' : ''}</span>
-          )}
-        </div>
       </div>
     );
   }
