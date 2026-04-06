@@ -1754,13 +1754,89 @@ input[type="range"]:focus {
   background: var(--surface-2);
 }
 
+.item-image-preview {
+  width: 100%;
+  max-height: 120px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
 /* ── Choice rows ─────────────────────────────────────────────────────────── */
+
+/* ── Screen reorder ───────────────────────────────────────────────────────── */
+
+.screen-item-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.screen-item-wrap .screen-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.screen-item-reorder {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.screen-item-wrap:hover .screen-item-reorder {
+  opacity: 1;
+}
+
+.reorder-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  font-size: 0.7rem;
+  padding: 1px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.12s, background 0.12s;
+  box-shadow: none;
+}
+
+.reorder-btn:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-2);
+  box-shadow: none;
+}
+
+.reorder-btn:disabled {
+  opacity: 0.2;
+  cursor: default;
+}
+
+/* ── Choice reorder ───────────────────────────────────────────────────────── */
+
+.choices-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.choices-shuffle {
+  font-size: 0.78rem;
+  padding: 0.2rem 0.6rem;
+}
 
 .choice-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 0.5rem;
+}
+
+.choice-reorder {
+  display: flex;
+  gap: 2px;
 }
 
 .choice-text { width: 100%; }

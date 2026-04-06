@@ -4,7 +4,7 @@ import { fetchProject, fetchModule, updateModule } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import type { Project, ModuleRecord } from '../lib/types';
 import type { Module, Screen, Interaction, ImageTextLayout } from '../lib/moduleSchema';
-import { imageTextLayouts } from '../lib/moduleSchema';
+import type { } from '../lib/moduleSchema';
 import { ImagePicker, type PickedImage } from './ImagePicker';
 
 // ─── Page wrapper ─────────────────────────────────────────────────────────────
@@ -148,17 +148,47 @@ function ModuleEditor({
               f => f.target_id === screen.id && f.status === 'open'
             ).length;
             const isActive = selected.kind === 'screen' && selected.index === i;
+
+            function moveScreen(from: number, to: number) {
+              applyUpdate(d => {
+                const tmp = d.screens[from];
+                d.screens[from] = d.screens[to];
+                d.screens[to] = tmp;
+              });
+              if (selected.kind === 'screen') {
+                if (selected.index === from) setSelected({ kind: 'screen', index: to });
+                else if (selected.index === to) setSelected({ kind: 'screen', index: from });
+              }
+            }
+
             return (
-              <button
-                key={screen.id}
-                className={`screen-item ${isActive ? 'active' : ''}`}
-                onClick={() => setSelected({ kind: 'screen', index: i })}
-              >
-                <span className="screen-item-num">{i + 1}</span>
-                <span className="screen-item-title">{screen.title || '(untitled)'}</span>
-                <span className="screen-item-type">{screen.type}</span>
-                {flagCount > 0 && <span className="screen-item-flag">{flagCount}</span>}
-              </button>
+              <div key={screen.id} className="screen-item-wrap">
+                <button
+                  className={`screen-item ${isActive ? 'active' : ''}`}
+                  onClick={() => setSelected({ kind: 'screen', index: i })}
+                >
+                  <span className="screen-item-num">{i + 1}</span>
+                  <span className="screen-item-title">{screen.title || '(untitled)'}</span>
+                  <span className="screen-item-type">{screen.type}</span>
+                  {flagCount > 0 && <span className="screen-item-flag">{flagCount}</span>}
+                </button>
+                <div className="screen-item-reorder">
+                  <button
+                    type="button"
+                    className="reorder-btn"
+                    title="Move up"
+                    disabled={i === 0}
+                    onClick={e => { e.stopPropagation(); moveScreen(i, i - 1); }}
+                  >↑</button>
+                  <button
+                    type="button"
+                    className="reorder-btn"
+                    title="Move down"
+                    disabled={i === draft.screens.length - 1}
+                    onClick={e => { e.stopPropagation(); moveScreen(i, i + 1); }}
+                  >↓</button>
+                </div>
+              </div>
             );
           })}
         </nav>
@@ -391,10 +421,12 @@ function ScreenEditor({
       {hasItemsInteraction && (
         <ItemsEditor
           label={screen.type === 'accordion' ? 'Accordion items' : 'Click-reveal items'}
-          items={(interaction0 as { kind: string; items: { title: string; body: string }[] }).items}
+          items={(interaction0 as { kind: string; items: RevealItem[] }).items}
+          showImages={screen.type === 'click_reveal'}
+          token={token}
           onUpdate={items =>
             updateScreen(s => {
-              (s.interactions[0] as { kind: string; items: { title: string; body: string }[] }).items = items;
+              (s.interactions[0] as { kind: string; items: RevealItem[] }).items = items;
             })
           }
         />
@@ -489,17 +521,39 @@ function LayoutPicker({
 
 // ─── Items editor (accordion / click_reveal) ──────────────────────────────────
 
+type RevealItem = { title: string; body: string; image?: { url: string; alt_text: string } | null };
+
 function ItemsEditor({
   label,
   items,
+  showImages = false,
+  token,
   onUpdate,
 }: {
   label: string;
-  items: { title: string; body: string }[];
-  onUpdate: (items: { title: string; body: string }[]) => void;
+  items: RevealItem[];
+  showImages?: boolean;
+  token?: string;
+  onUpdate: (items: RevealItem[]) => void;
 }) {
+  const [pickerFor, setPickerFor] = useState<number | null>(null);
+
   return (
     <div className="field-group">
+      {pickerFor !== null && token && (
+        <ImagePicker
+          token={token}
+          initialQuery={items[pickerFor]?.title ?? ''}
+          onSelect={picked => {
+            const next = items.map((it, j) =>
+              j === pickerFor ? { ...it, image: { url: picked.url, alt_text: picked.alt_text } } : it
+            );
+            onUpdate(next);
+            setPickerFor(null);
+          }}
+          onClose={() => setPickerFor(null)}
+        />
+      )}
       <span className="field-label">{label}</span>
       {items.map((item, i) => (
         <div key={i} className="item-editor">
@@ -510,8 +564,7 @@ function ItemsEditor({
               value={item.title}
               onChange={e => {
                 const v = e.target.value;
-                const next = items.map((it, j) => j === i ? { ...it, title: v } : it);
-                onUpdate(next);
+                onUpdate(items.map((it, j) => j === i ? { ...it, title: v } : it));
               }}
             />
           </div>
@@ -523,11 +576,21 @@ function ItemsEditor({
               value={item.body}
               onChange={e => {
                 const v = e.target.value;
-                const next = items.map((it, j) => j === i ? { ...it, body: v } : it);
-                onUpdate(next);
+                onUpdate(items.map((it, j) => j === i ? { ...it, body: v } : it));
               }}
             />
           </div>
+          {showImages && (
+            <div className="field-group">
+              <span className="field-label">Card image</span>
+              {item.image?.url && !item.image.url.includes('placeholder') && (
+                <img src={item.image.url} alt={item.image.alt_text} className="item-image-preview" />
+              )}
+              <button type="button" className="ghost" onClick={() => setPickerFor(i)}>
+                {item.image?.url && !item.image.url.includes('placeholder') ? 'Change image' : 'Add image'}
+              </button>
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -569,7 +632,22 @@ function QuestionInteractionEditor({
       </div>
 
       <div className="field-group">
-        <span className="field-label">Choices</span>
+        <div className="choices-header">
+          <span className="field-label">Choices</span>
+          <button
+            type="button"
+            className="ghost choices-shuffle"
+            title="Shuffle order"
+            onClick={() => update(i => {
+              for (let j = i.choices.length - 1; j > 0; j--) {
+                const k = Math.floor(Math.random() * (j + 1));
+                [i.choices[j], i.choices[k]] = [i.choices[k], i.choices[j]];
+              }
+            })}
+          >
+            ⇄ Shuffle
+          </button>
+        </div>
         {interaction.choices.map((choice, ci) => (
           <div key={choice.id} className="choice-row">
             <input
@@ -598,6 +676,26 @@ function QuestionInteractionEditor({
               />
               Correct
             </label>
+            <div className="choice-reorder">
+              <button
+                type="button"
+                className="reorder-btn"
+                title="Move up"
+                disabled={ci === 0}
+                onClick={() => update(i => {
+                  [i.choices[ci - 1], i.choices[ci]] = [i.choices[ci], i.choices[ci - 1]];
+                })}
+              >↑</button>
+              <button
+                type="button"
+                className="reorder-btn"
+                title="Move down"
+                disabled={ci === interaction.choices.length - 1}
+                onClick={() => update(i => {
+                  [i.choices[ci], i.choices[ci + 1]] = [i.choices[ci + 1], i.choices[ci]];
+                })}
+              >↓</button>
+            </div>
           </div>
         ))}
       </div>
