@@ -2599,7 +2599,7 @@ input[type="range"]:focus {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 2rem 1.75rem 5rem;
+  padding: 2rem 13rem 5rem 1.75rem; /* right offset keeps text clear of sidenav labels */
   max-width: 780px;
   width: 100%;
   margin: 0 auto;
@@ -3103,6 +3103,8 @@ input[type="range"]:focus {
 
 /* ── Screen sidenav ───────────────────────────────────────────────────────── */
 
+/* ── Desktop: fixed right column with always-visible labels ── */
+
 .player-sidenav {
   position: fixed;
   right: 1.1rem;
@@ -3112,7 +3114,7 @@ input[type="range"]:focus {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 7px;
+  gap: 6px;
   padding: 0.5rem 0;
 }
 
@@ -3127,11 +3129,17 @@ input[type="range"]:focus {
   cursor: pointer;
   box-shadow: none;
   white-space: nowrap;
+  transition: opacity 0.15s;
 }
 
 .player-sidenav-item:hover:not(:disabled) {
   background: transparent;
   box-shadow: none;
+}
+
+.player-sidenav-item.future {
+  cursor: default;
+  opacity: 0.45;
 }
 
 .player-sidenav-dot {
@@ -3156,30 +3164,74 @@ input[type="range"]:focus {
 .player-sidenav-label {
   font-size: 0.75rem;
   font-weight: 500;
-  color: #374151;
+  color: #6b7280;
   background: white;
   border-radius: 6px;
   padding: 3px 9px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
-  max-width: 180px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(6px);
-  transition: opacity 0.18s, transform 0.18s;
+}
+
+.player-sidenav-item.visited .player-sidenav-label {
+  color: #374151;
 }
 
 .player-sidenav-item.active .player-sidenav-label {
-  font-weight: 600;
+  font-weight: 700;
   color: #111827;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 
-/* Show labels when hovering the whole nav */
-.player-sidenav:hover .player-sidenav-label {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(0);
+/* ── Mobile: horizontal dot strip above prev/next bar ── */
+
+@media (max-width: 768px) {
+  .player-sidenav {
+    position: fixed;
+    bottom: 4.5rem; /* clears the player-nav bar height */
+    left: 0;
+    right: 0;
+    top: auto;
+    transform: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 0.4rem 1rem;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(6px);
+    border-top: 1px solid #ebebeb;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .player-sidenav::-webkit-scrollbar { display: none; }
+
+  /* Hide labels on mobile — dots only */
+  .player-sidenav-label { display: none; }
+
+  /* Slightly larger dots for touch targets */
+  .player-sidenav-dot {
+    width: 10px;
+    height: 10px;
+  }
+
+  .player-sidenav-item {
+    flex-direction: column;
+    padding: 4px;
+  }
+
+  /* Restore symmetric content padding — no sidenav labels on mobile */
+  .player-content {
+    padding: 2rem 1.75rem 5rem;
+  }
+
+  /* Give the nav bar some breathing room so dots strip doesn't overlap */
+  .player-nav {
+    padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
+  }
 }
 
 /* ── Navigation ───────────────────────────────────────────────────────────── */

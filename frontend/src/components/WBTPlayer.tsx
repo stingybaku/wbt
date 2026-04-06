@@ -253,15 +253,18 @@ function PlayerScreenNav({ screens, currentIndex, onJump }: {
   return (
     <nav className="player-sidenav" aria-label="Course screens">
       {screens.map((screen, i) => {
-        const isActive = i === currentIndex;
+        const isActive  = i === currentIndex;
         const isVisited = i < currentIndex;
+        const canJump   = isActive || isVisited;
         return (
           <button
             key={screen.id}
             type="button"
-            className={`player-sidenav-item${isActive ? ' active' : isVisited ? ' visited' : ''}`}
-            onClick={() => onJump(i)}
+            className={`player-sidenav-item${isActive ? ' active' : isVisited ? ' visited' : ' future'}`}
+            onClick={() => canJump && onJump(i)}
+            disabled={!canJump}
             aria-current={isActive ? 'step' : undefined}
+            title={screen.title}
           >
             <span className="player-sidenav-dot" aria-hidden="true" />
             <span className="player-sidenav-label">{screen.title}</span>
