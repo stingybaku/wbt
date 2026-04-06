@@ -175,6 +175,7 @@ export function WBTPlayer({
   viewerMode = false,
   initialScreenIndex = 0,
   initialAnswers,
+  initialVisited,
   onScreenChange,
   onAnswered,
 }: {
@@ -184,7 +185,8 @@ export function WBTPlayer({
   viewerMode?: boolean;
   initialScreenIndex?: number;
   initialAnswers?: Record<string, QuestionAnswer>;
-  onScreenChange?: (index: number, total: number) => void;
+  initialVisited?: number[];
+  onScreenChange?: (index: number, total: number, visited: number[]) => void;
   onAnswered?: (screenId: string, answer: QuestionAnswer) => void;
 }) {
   const screens = module.screens;
@@ -198,7 +200,7 @@ export function WBTPlayer({
   const [screenIndex, setScreenIndex] = useState(() => saved?.screenIndex ?? initialScreenIndex);
   const [visitedSet, setVisitedSet] = useState<Set<number>>(() => {
     const idx = saved?.screenIndex ?? initialScreenIndex;
-    return new Set<number>([idx, ...(saved?.visited ?? [])]);
+    return new Set<number>([idx, ...(saved?.visited ?? initialVisited ?? [])]);
   });
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, QuestionAnswer>>(
     () => saved?.answers ?? initialAnswers ?? {}
@@ -216,9 +218,10 @@ export function WBTPlayer({
   }, [projectId, screenIndex, visitedSet, questionAnswers]);
 
   function goTo(index: number) {
+    const newVisited = new Set(visitedSet).add(index);
     setScreenIndex(index);
-    setVisitedSet(prev => new Set(prev).add(index));
-    onScreenChange?.(index, screens.length);
+    setVisitedSet(newVisited);
+    onScreenChange?.(index, screens.length, [...newVisited]);
   }
 
   function goNext() {
@@ -226,7 +229,7 @@ export function WBTPlayer({
       goTo(screenIndex + 1);
     } else {
       setPhase('complete');
-      onScreenChange?.(screens.length - 1, screens.length);
+      onScreenChange?.(screens.length - 1, screens.length, [...visitedSet]);
     }
   }
 
