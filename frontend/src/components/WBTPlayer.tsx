@@ -13,6 +13,23 @@ function randomDir(): EntryDir { return DIRS[Math.floor(Math.random() * DIRS.len
 
 // ─── Rich text renderer ───────────────────────────────────────────────────────
 
+/** Render inline bold/italic markers within a plain-text string. */
+function RichInline({ text }: { text: string }) {
+  // Split on **bold** and _italic_ spans
+  const re = /\*\*([^*]+)\*\*|_([^_]+)_/g;
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    if (m[1] !== undefined) parts.push(<strong key={m.index}>{m[1]}</strong>);
+    if (m[2] !== undefined) parts.push(<em key={m.index}>{m[2]}</em>);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return <>{parts}</>;
+}
+
 function RichText({ text, className }: { text: string; className?: string }) {
   const lines = text.split('\n');
   const nodes: React.ReactNode[] = [];
@@ -21,13 +38,21 @@ function RichText({ text, className }: { text: string; className?: string }) {
 
   function flushOl() {
     if (olItems.length) {
-      nodes.push(<ol key={nodes.length} className="player-list player-list--ol">{olItems.map((t, i) => <li key={i}>{t}</li>)}</ol>);
+      nodes.push(
+        <ol key={nodes.length} className="player-list player-list--ol">
+          {olItems.map((t, i) => <li key={i}><RichInline text={t} /></li>)}
+        </ol>
+      );
       olItems = [];
     }
   }
   function flushUl() {
     if (ulItems.length) {
-      nodes.push(<ul key={nodes.length} className="player-list player-list--ul">{ulItems.map((t, i) => <li key={i}>{t}</li>)}</ul>);
+      nodes.push(
+        <ul key={nodes.length} className="player-list player-list--ul">
+          {ulItems.map((t, i) => <li key={i}><RichInline text={t} /></li>)}
+        </ul>
+      );
       ulItems = [];
     }
   }
@@ -50,7 +75,11 @@ function RichText({ text, className }: { text: string; className?: string }) {
     } else {
       flushOl();
       flushUl();
-      nodes.push(<p key={nodes.length} className={className ?? 'player-body'}>{line}</p>);
+      nodes.push(
+        <p key={nodes.length} className={className ?? 'player-body'}>
+          <RichInline text={line} />
+        </p>
+      );
     }
   }
   flushOl();
@@ -293,8 +322,9 @@ function ScreenRenderer({
   const isFirst = screenIndex === 0;
   const isLast = screenIndex === totalScreens - 1;
 
+  const allAttributions = [...attribution.unsplash, ...(attribution.pexels ?? [])];
   const imageAttribution =
-    screen.image && attribution.unsplash.find(a => screen.image?.url.includes(a.image_id));
+    screen.image && allAttributions.find(a => screen.image?.url.includes(a.image_id));
 
   return (
     <>
@@ -326,7 +356,7 @@ function ScreenRenderer({
                   <a href={imageAttribution.url} target="_blank" rel="noopener noreferrer">
                     {imageAttribution.photographer}
                   </a>{' '}
-                  on Unsplash
+                  on {imageAttribution.license.replace(' License', '')}
                 </figcaption>
               )}
             </figure>
@@ -374,12 +404,14 @@ function TextScreen({ screen }: { screen: Screen }) {
 
 // ─── Image + text screen ──────────────────────────────────────────────────────
 
+type AttributionEntry = Module['attribution']['unsplash'][number];
+
 function ImageTextScreen({
   screen,
   attribution,
 }: {
   screen: Screen;
-  attribution: Module['attribution']['unsplash'][number] | null;
+  attribution: AttributionEntry | null;
 }) {
   const layout = screen.layout ?? 'top';
 
@@ -392,7 +424,7 @@ function ImageTextScreen({
           <a href={attribution.url} target="_blank" rel="noopener noreferrer">
             {attribution.photographer}
           </a>{' '}
-          on Unsplash
+          on {attribution.license.replace(' License', '')}
         </figcaption>
       )}
     </figure>

@@ -67,6 +67,7 @@ export const moduleSchema = z
       duration_minutes: z.number().min(10).max(30),
       source_summary: z.string(),
       created_at: z.string(),
+      cover_image: z.string().optional(),
     }),
     learning_objectives: z.array(z.string()).min(1),
     screens: z.array(screenSchema).min(10),
@@ -85,6 +86,14 @@ export const moduleSchema = z
           license: z.string(),
         })
       ),
+      pexels: z.array(
+        z.object({
+          image_id: z.string(),
+          photographer: z.string(),
+          url: z.string().url(),
+          license: z.string(),
+        })
+      ).optional(),
     }),
     sources: z.array(z.string()).optional(),
     review_flags: z

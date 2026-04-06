@@ -75,6 +75,12 @@ class ModuleController extends Controller
 
         $module = Module::where('project_id', $project->id)->firstOrFail();
         $module->module_json = $data['module_json'];
+
+        // Sync module cover image if the editor set one explicitly in meta
+        if (!empty($data['module_json']['meta']['cover_image'])) {
+            $module->cover_image_url = $data['module_json']['meta']['cover_image'];
+        }
+
         $module->save();
 
         return response()->json([
