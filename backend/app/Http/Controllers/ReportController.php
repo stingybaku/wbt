@@ -87,7 +87,7 @@ class ReportController extends Controller
                 'name'            => $progress->viewer_name,
                 'email'           => $invite->email,
                 'progress'        => $progress->total_screens ? [
-                    'current' => $progress->current_screen_index,
+                    'current' => $progress->current_screen_index + 1,
                     'total'   => $progress->total_screens,
                 ] : null,
                 'score'           => $totalQuestions > 0 ? [
