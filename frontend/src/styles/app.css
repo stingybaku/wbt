@@ -1672,6 +1672,101 @@ input[type="range"]:focus {
   border: 1px solid var(--border);
 }
 
+/* ── Body editor (Tiptap) ─────────────────────────────────────────────────── */
+
+.body-editor {
+  border: 1px solid var(--border-hi);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.body-editor:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.body-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0.3rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.body-editor-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  box-shadow: none;
+  padding: 0;
+}
+
+.body-editor-btn:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: none;
+}
+
+.body-editor-btn.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: rgba(45, 212, 191, 0.25);
+}
+
+.body-editor-divider {
+  width: 1px;
+  height: 1.1rem;
+  background: var(--border-hi);
+  margin: 0 0.2rem;
+}
+
+/* ProseMirror content area */
+.body-editor .ProseMirror {
+  padding: 0.65rem 0.85rem;
+  min-height: 100px;
+  outline: none;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.body-editor .ProseMirror p {
+  margin: 0 0 0.4em;
+}
+
+.body-editor .ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+
+.body-editor .ProseMirror ul,
+.body-editor .ProseMirror ol {
+  padding-left: 1.4rem;
+  margin: 0.3em 0;
+}
+
+.body-editor .ProseMirror li {
+  margin-bottom: 0.15em;
+}
+
+.body-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--text-3);
+  pointer-events: none;
+  position: absolute;
+}
+
 /* ── Field groups ─────────────────────────────────────────────────────────── */
 
 .field-group {

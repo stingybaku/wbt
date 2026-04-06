@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { BodyEditor } from './BodyEditor';
 import { Link, useParams } from 'react-router-dom';
 import { fetchProject, fetchModule, updateModule } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -406,15 +407,10 @@ function ScreenEditor({
       </div>
 
       <div className="field-group">
-        <label htmlFor={`screen-body-${screenIndex}`}>Body</label>
-        <textarea
-          id={`screen-body-${screenIndex}`}
-          rows={5}
+        <label>Body</label>
+        <BodyEditor
           value={screen.body}
-          onChange={e => {
-            const v = e.target.value;
-            updateScreen(s => { s.body = v; });
-          }}
+          onChange={v => updateScreen(s => { s.body = v; })}
         />
       </div>
 
@@ -632,15 +628,10 @@ function ItemsEditor({
             />
           </div>
           <div className="field-group">
-            <label htmlFor={`item-body-${i}`}>Item {i + 1} — body</label>
-            <textarea
-              id={`item-body-${i}`}
-              rows={3}
+            <label>Item {i + 1} — body</label>
+            <BodyEditor
               value={item.body}
-              onChange={e => {
-                const v = e.target.value;
-                onUpdate(items.map((it, j) => j === i ? { ...it, body: v } : it));
-              }}
+              onChange={v => onUpdate(items.map((it, j) => j === i ? { ...it, body: v } : it))}
             />
           </div>
           {showImages && (
