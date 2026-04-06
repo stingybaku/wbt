@@ -14,6 +14,7 @@ use App\Http\Controllers\ProjectSourceController;
 use App\Http\Controllers\ScormController;
 use App\Http\Controllers\PexelsController;
 use App\Http\Controllers\UnsplashController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ViewerController;
 
 Route::post('/auth/login', [AuthController::class, 'login']);
@@ -44,6 +45,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/projects/{id}/scorm', [ScormController::class, 'export']);
 
     Route::post('/projects/{id}/events', [EventsController::class, 'store']);
+
+    Route::get('/projects/{id}/report', [ReportController::class, 'show']);
 
     // Invites
     Route::get('/projects/{id}/invites',                                    [ProjectInvitesController::class, 'index']);

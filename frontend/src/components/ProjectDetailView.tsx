@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchProject, fetchModule, generateModule, fetchInvites, createInvite, revokeInvite, downloadCertificate } from '../lib/api';
+import { fetchProject, fetchModule, generateModule, fetchInvites, createInvite, revokeInvite, downloadCertificate, fetchProjectReport } from '../lib/api';
+import type { ProjectReport } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import type { Project, ModuleRecord, ProjectInvite } from '../lib/types';
 
@@ -17,6 +18,7 @@ export function ProjectDetailView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'report'>('overview');
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -187,33 +189,54 @@ export function ProjectDetailView() {
           </div>
         )}
 
-        <div className="detail-grid">
-          {/* Left column */}
-          <div className="detail-main">
-            <div className="card">
-              <h2>Module</h2>
-              <ModuleStatusPanel
-                module={module}
-                hasSource={!!project.source_type}
-                retrying={retrying}
-                onRetry={handleRetry}
-              />
+        {/* Tab bar */}
+        <div className="detail-tabs">
+          <button
+            type="button"
+            className={`detail-tab${activeTab === 'overview' ? ' detail-tab--active' : ''}`}
+            onClick={() => setActiveTab('overview')}
+          >
+            Overview
+          </button>
+          <button
+            type="button"
+            className={`detail-tab${activeTab === 'report' ? ' detail-tab--active' : ''}`}
+            onClick={() => setActiveTab('report')}
+          >
+            Report
+          </button>
+        </div>
+
+        {activeTab === 'overview' ? (
+          <div className="detail-grid">
+            {/* Left column */}
+            <div className="detail-main">
+              <div className="card">
+                <h2>Module</h2>
+                <ModuleStatusPanel
+                  module={module}
+                  hasSource={!!project.source_type}
+                  retrying={retrying}
+                  onRetry={handleRetry}
+                />
+              </div>
             </div>
 
+            {/* Right column */}
+            <div className="detail-side">
+              <ViewersPanel
+                invites={invites}
+                moduleReady={module?.status === 'generated'}
+                onInvite={handleInvite}
+                onRevoke={handleRevoke}
+                authToken={token ?? ''}
+                projectId={id ?? ''}
+              />
+            </div>
           </div>
-
-          {/* Right column */}
-          <div className="detail-side">
-            <ViewersPanel
-              invites={invites}
-              moduleReady={module?.status === 'generated'}
-              onInvite={handleInvite}
-              onRevoke={handleRevoke}
-              authToken={token ?? ''}
-              projectId={id ?? ''}
-            />
-          </div>
-        </div>
+        ) : (
+          <ReportPanel authToken={token ?? ''} projectId={id ?? ''} />
+        )}
       </section>
     </>
   );
@@ -297,6 +320,177 @@ function ModuleStatusPanel({
   }
 
   return null;
+}
+
+// ─── Report panel ────────────────────────────────────────────────────────────
+
+function ReportPanel({ authToken, projectId }: { authToken: string; projectId: string }) {
+  const [report, setReport] = useState<ProjectReport | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchProjectReport(authToken, projectId)
+      .then(setReport)
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load report'))
+      .finally(() => setLoading(false));
+  }, [authToken, projectId]);
+
+  if (loading) return <p className="muted">Loading report…</p>;
+  if (error)   return <div className="error-banner">{error}</div>;
+  if (!report) return null;
+
+  const { summary, viewers, questions } = report;
+
+  return (
+    <div className="report-panel">
+      {/* Summary strip */}
+      <div className="report-summary">
+        <div className="stat-card">
+          <span className="stat-value">{summary.invited}</span>
+          <span className="stat-label">Invited</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">{summary.started}</span>
+          <span className="stat-label">Started</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">{summary.completed}</span>
+          <span className="stat-label">Completed</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">
+            {summary.avg_score != null ? `${Math.round(summary.avg_score * 100)}%` : '—'}
+          </span>
+          <span className="stat-label">Avg Score</span>
+        </div>
+      </div>
+
+      {/* Viewers table */}
+      <div className="card report-viewers-card">
+        <h2>Viewers</h2>
+        {viewers.length === 0 ? (
+          <p className="muted" style={{ fontSize: '0.85rem' }}>No viewers invited yet.</p>
+        ) : (
+          <table className="report-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Progress</th>
+                <th>Score</th>
+                <th>Status</th>
+                <th>Last Active</th>
+              </tr>
+            </thead>
+            <tbody>
+              {viewers.map((v, i) => {
+                const progressPct = v.progress
+                  ? Math.round((v.progress.current / v.progress.total) * 100)
+                  : null;
+                const scorePct = v.score
+                  ? Math.round((v.score.correct / v.score.total) * 100)
+                  : null;
+                return (
+                  <tr key={i}>
+                    <td>{v.name ?? <span className="muted">—</span>}</td>
+                    <td className="report-email">{v.email}</td>
+                    <td>
+                      {v.progress ? (
+                        <div className="report-progress-cell">
+                          <div className="report-progress-track">
+                            <div
+                              className="report-progress-fill"
+                              style={{ width: `${progressPct}%` }}
+                            />
+                          </div>
+                          <span className="report-progress-label">
+                            {v.progress.current}/{v.progress.total}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
+                    <td>
+                      {v.score != null ? (
+                        <span className={`report-score${scorePct != null && scorePct >= 70 ? ' report-score--pass' : ' report-score--fail'}`}>
+                          {v.score.correct}/{v.score.total}
+                          <span className="report-score-pct"> ({scorePct}%)</span>
+                        </span>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
+                    <td>
+                      {v.completed_at ? (
+                        <span className="report-badge report-badge--completed">
+                          Completed {new Date(v.completed_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </span>
+                      ) : v.progress ? (
+                        <span className="report-badge report-badge--progress">In progress</span>
+                      ) : (
+                        <span className="report-badge report-badge--pending">Not started</span>
+                      )}
+                    </td>
+                    <td className="muted report-date">
+                      {v.last_active_at
+                        ? new Date(v.last_active_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                        : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Questions breakdown */}
+      {questions.length > 0 && (
+        <div className="card report-questions-card">
+          <h2>Questions</h2>
+          <div className="report-questions-list">
+            {questions.map((q) => (
+              <div key={q.screen_id} className="report-question">
+                <div className="report-question-header">
+                  <p className="report-question-prompt">{q.prompt}</p>
+                  <span className="report-question-stat">
+                    {q.respondents === 0
+                      ? 'No responses yet'
+                      : `${Math.round((q.pct_correct ?? 0) * 100)}% correct · ${q.respondents} response${q.respondents !== 1 ? 's' : ''}`}
+                  </span>
+                </div>
+                <div className="report-choices">
+                  {q.choices.map((c) => {
+                    const pct = q.respondents > 0
+                      ? Math.round((c.pick_count / q.respondents) * 100)
+                      : 0;
+                    return (
+                      <div key={c.id} className={`report-choice${c.is_correct ? ' report-choice--correct' : ''}`}>
+                        <div className="report-choice-bar-wrap">
+                          <div
+                            className="report-choice-bar"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className="report-choice-text">
+                          {c.text}
+                          {c.is_correct && <span className="report-choice-correct-badge">Correct</span>}
+                        </span>
+                        <span className="report-choice-pct">{pct}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Viewers panel ────────────────────────────────────────────────────────────
