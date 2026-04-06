@@ -9,14 +9,19 @@ class GenerationService
 {
     private Client $client;
     private string $model;
+    private string $fastModel;
+
+    // Source texts longer than this get an extraction pre-pass with the fast model
+    private const EXTRACTION_THRESHOLD = 8000;
 
     public function __construct()
     {
-        $this->client = new Client(
+        $this->client    = new Client(
             apiKey: config('services.anthropic.api_key'),
-            requestOptions: ['timeout' => 180], // 3 minutes per API call
+            requestOptions: ['timeout' => 300], // 5 minutes per API call
         );
-        $this->model  = config('services.anthropic.model', 'claude-sonnet-4-6');
+        $this->model     = config('services.anthropic.model', 'claude-sonnet-4-6');
+        $this->fastModel = config('services.anthropic.model_fast', 'claude-haiku-4-5-20251001');
     }
 
     /**
@@ -33,6 +38,13 @@ class GenerationService
         string $projectTitle,
     ): array {
         $lastError = null;
+
+        // For large source texts, run a cheap extraction pre-pass first
+        if (strlen($sourceText) > self::EXTRACTION_THRESHOLD) {
+            Log::info('GenerationService: source text is ' . strlen($sourceText) . ' chars — running extraction pre-pass with fast model');
+            $sourceText = $this->extractKeyContent($sourceText);
+            Log::info('GenerationService: extracted content is ' . strlen($sourceText) . ' chars');
+        }
 
         for ($attempt = 1; $attempt <= 3; $attempt++) {
             try {
@@ -210,12 +222,49 @@ SOURCE CONTENT:
 {$sourceText}
 USER;
 
-        $response = $this->client->messages->create(
+        $stream = $this->client->messages->createStream(
             maxTokens: 16000,
             messages: [['role' => 'user', 'content' => $userPrompt]],
             model: $this->model,
             system: $systemPrompt,
             temperature: 0.4,
+        );
+
+        $text = '';
+        foreach ($stream as $event) {
+            if ($event->type === 'content_block_delta' && $event->delta->type === 'text_delta') {
+                $text .= $event->delta->text;
+            }
+        }
+
+        return $text;
+    }
+
+    /**
+     * Extract and condense key content from a large source text using the fast model.
+     * Keeps the important facts, concepts, and structure while discarding filler.
+     */
+    private function extractKeyContent(string $sourceText): string
+    {
+        $response = $this->client->messages->create(
+            maxTokens: 4000,
+            messages: [['role' => 'user', 'content' => $sourceText]],
+            model: $this->fastModel,
+            system: <<<'SYSTEM'
+You are a content extraction assistant. Your task is to extract and condense the key information from the provided document for use in creating a training course.
+
+Output a structured summary that preserves:
+- All important concepts, definitions, and explanations
+- Key facts, data points, and statistics
+- Processes, steps, or procedures
+- Examples that illustrate important points
+- Any learning-relevant structure (sections, topics)
+
+Discard: introductory boilerplate, repetition, administrative content, footnotes, and anything not relevant to learning.
+
+Output plain text only — no JSON, no markdown, no commentary. Be thorough but concise. Target around 3000–4000 words.
+SYSTEM,
+            temperature: 0.2,
         );
 
         return $response->content[0]->text;

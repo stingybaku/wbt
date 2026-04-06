@@ -101,6 +101,7 @@ if [ -n "${MAIL_FROM_NAME:-}" ]; then upsert_env "MAIL_FROM_NAME" "${MAIL_FROM_N
 # Persist AI / media keys.
 if [ -n "${ANTHROPIC_API_KEY:-}" ]; then upsert_env "ANTHROPIC_API_KEY" "${ANTHROPIC_API_KEY}"; fi
 if [ -n "${ANTHROPIC_MODEL:-}" ]; then upsert_env "ANTHROPIC_MODEL" "${ANTHROPIC_MODEL}"; fi
+if [ -n "${ANTHROPIC_MODEL_FAST:-}" ]; then upsert_env "ANTHROPIC_MODEL_FAST" "${ANTHROPIC_MODEL_FAST}"; fi
 if [ -n "${UNSPLASH_ACCESS_KEY:-}" ]; then upsert_env "UNSPLASH_ACCESS_KEY" "${UNSPLASH_ACCESS_KEY}"; fi
 if [ -n "${VOYAGE_API_KEY:-}" ]; then upsert_env "VOYAGE_API_KEY" "${VOYAGE_API_KEY}"; fi
 if [ -n "${PEXELS_API_KEY:-}" ]; then upsert_env "PEXELS_API_KEY" "${PEXELS_API_KEY}"; fi
