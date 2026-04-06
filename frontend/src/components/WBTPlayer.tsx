@@ -183,6 +183,11 @@ export function WBTPlayer({
     }
   }
 
+  function jumpTo(index: number) {
+    setScreenIndex(index);
+    onScreenChange?.(index, screens.length);
+  }
+
   if (phase === 'cover') {
     return (
       <CoverScreen
@@ -223,6 +228,8 @@ export function WBTPlayer({
         </div>
       </div>
 
+      <PlayerScreenNav screens={screens} currentIndex={screenIndex} onJump={jumpTo} />
+
       <ScreenRenderer
         key={currentScreen.id}
         screen={currentScreen}
@@ -233,6 +240,38 @@ export function WBTPlayer({
         attribution={module.attribution}
       />
     </div>
+  );
+}
+
+// ─── Floating screen nav ──────────────────────────────────────────────────────
+
+function PlayerScreenNav({ screens, currentIndex, onJump }: {
+  screens: Screen[];
+  currentIndex: number;
+  onJump: (index: number) => void;
+}) {
+  return (
+    <nav className="player-sidenav" aria-label="Course screens">
+      {screens.map((screen, i) => {
+        const isActive  = i === currentIndex;
+        const isVisited = i < currentIndex;
+        const canJump   = isActive || isVisited;
+        return (
+          <button
+            key={screen.id}
+            type="button"
+            className={`player-sidenav-item${isActive ? ' active' : isVisited ? ' visited' : ' future'}`}
+            onClick={() => canJump && onJump(i)}
+            disabled={!canJump}
+            aria-current={isActive ? 'step' : undefined}
+            title={screen.title}
+          >
+            <span className="player-sidenav-dot" aria-hidden="true" />
+            <span className="player-sidenav-label">{screen.title}</span>
+          </button>
+        );
+      })}
+    </nav>
   );
 }
 
