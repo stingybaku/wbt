@@ -168,6 +168,7 @@ export function fetchViewerModule(viewerToken: string): Promise<{
     total_screens: number;
     completed_at: string | null;
     question_answers: Record<string, ViewerQuestionAnswer>;
+    visited_screens: number[];
   } | null;
 }> {
   return request(`/view/${viewerToken}`);
@@ -200,9 +201,45 @@ export function updateViewerProgress(
     current_screen_index: number;
     total_screens: number;
     question_answers?: Record<string, ViewerQuestionAnswer>;
+    visited_screens?: number[];
   }
 ): Promise<{ ok: boolean }> {
   return request(`/view/${viewerToken}/progress`, { method: 'POST', body: payload });
+}
+
+// ─── Report ───────────────────────────────────────────────────────────────────
+
+export type ReportViewerRow = {
+  name: string | null;
+  email: string;
+  progress: { current: number; total: number } | null;
+  score: { correct: number; total: number } | null;
+  completed_at: string | null;
+  last_active_at: string | null;
+  has_certificate: boolean;
+};
+
+export type ReportQuestion = {
+  screen_id: string;
+  prompt: string;
+  pct_correct: number | null;
+  respondents: number;
+  choices: { id: string; text: string; is_correct: boolean; pick_count: number }[];
+};
+
+export type ProjectReport = {
+  summary: {
+    invited: number;
+    started: number;
+    completed: number;
+    avg_score: number | null;
+  };
+  viewers: ReportViewerRow[];
+  questions: ReportQuestion[];
+};
+
+export function fetchProjectReport(token: string, projectId: string): Promise<ProjectReport> {
+  return request<ProjectReport>(`/projects/${projectId}/report`, { token });
 }
 
 export function fetchNotifications(token: string): Promise<NotificationsResponse> {

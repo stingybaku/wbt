@@ -18,12 +18,14 @@ class InviteProgress extends Model
         'certificate_path',
         'last_active_at',
         'question_answers',
+        'visited_screens',
     ];
 
     protected $casts = [
         'completed_at'     => 'datetime',
         'last_active_at'   => 'datetime',
         'question_answers' => 'array',
+        'visited_screens'  => 'array',
     ];
 
     public function invite(): BelongsTo

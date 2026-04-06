@@ -39,6 +39,7 @@ class ViewerController extends Controller
                 'total_screens'        => $progress->total_screens,
                 'completed_at'         => $progress->completed_at?->toIso8601String(),
                 'question_answers'     => $progress->question_answers ?? [],
+                'visited_screens'      => $progress->visited_screens ?? [],
             ] : null,
         ]);
     }
@@ -86,6 +87,8 @@ class ViewerController extends Controller
             'current_screen_index' => 'required|integer|min:0',
             'total_screens'        => 'required|integer|min:1',
             'question_answers'     => 'sometimes|array',
+            'visited_screens'      => 'sometimes|array',
+            'visited_screens.*'    => 'integer|min:0',
         ]);
 
         $isComplete = $data['current_screen_index'] >= $data['total_screens'] - 1;
@@ -105,6 +108,10 @@ class ViewerController extends Controller
 
         if (array_key_exists('question_answers', $data)) {
             $update['question_answers'] = $data['question_answers'];
+        }
+
+        if (array_key_exists('visited_screens', $data)) {
+            $update['visited_screens'] = $data['visited_screens'];
         }
 
         InviteProgress::updateOrCreate(['invite_id' => $invite->id], $update);

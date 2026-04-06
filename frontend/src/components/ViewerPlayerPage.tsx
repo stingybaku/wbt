@@ -11,7 +11,7 @@ const STORAGE_NAME_KEY = (token: string) => `viewer_name_${token}`;
 type ViewerState =
   | { phase: 'gate' }
   | { phase: 'loading' }
-  | { phase: 'ready'; module: Module; projectTitle: string; initialScreenIndex: number; initialAnswers: Record<string, ViewerQuestionAnswer> }
+  | { phase: 'ready'; module: Module; projectTitle: string; initialScreenIndex: number; initialAnswers: Record<string, ViewerQuestionAnswer>; initialVisited: number[] }
   | { phase: 'error'; message: string };
 
 export function ViewerPlayerPage() {
@@ -22,8 +22,9 @@ export function ViewerPlayerPage() {
   const [verifying, setVerifying] = useState(false);
   const [gateError, setGateError] = useState<string | null>(null);
 
-  // Track accumulated question answers and current screen index for DB sync
+  // Track accumulated progress for DB sync
   const answersRef = useRef<Record<string, ViewerQuestionAnswer>>({});
+  const visitedRef = useRef<number[]>([]);
   const screenRef = useRef<{ index: number; total: number }>({ index: 0, total: 0 });
 
   // On mount: if this token was already verified in localStorage, skip the gate
@@ -45,8 +46,10 @@ export function ViewerPlayerPage() {
       // If the viewer completed the course, start from the beginning
       const initialScreenIndex = res.progress?.completed_at ? 0 : savedIndex;
       const initialAnswers = res.progress?.question_answers ?? {};
+      const initialVisited = res.progress?.visited_screens ?? [];
       // Seed refs so first sync has correct values
       answersRef.current = initialAnswers;
+      visitedRef.current = initialVisited;
       screenRef.current = { index: initialScreenIndex, total: res.module.screens.length };
       setState({
         phase: 'ready',
@@ -54,6 +57,7 @@ export function ViewerPlayerPage() {
         projectTitle: res.project_title,
         initialScreenIndex,
         initialAnswers,
+        initialVisited,
       });
     } catch (err: unknown) {
       setState({ phase: 'error', message: err instanceof Error ? err.message : 'Failed to load course.' });
@@ -83,11 +87,13 @@ export function ViewerPlayerPage() {
       current_screen_index: index,
       total_screens: total,
       question_answers: answersRef.current,
+      visited_screens: visitedRef.current,
     }).catch(() => {});
   }
 
-  function handleScreenChange(index: number, total: number) {
+  function handleScreenChange(index: number, total: number, visited: number[]) {
     screenRef.current = { index, total };
+    visitedRef.current = visited;
     syncProgress(index, total);
   }
 
@@ -158,6 +164,7 @@ export function ViewerPlayerPage() {
       viewerMode
       initialScreenIndex={state.initialScreenIndex}
       initialAnswers={state.initialAnswers}
+      initialVisited={state.initialVisited}
       onScreenChange={handleScreenChange}
       onAnswered={handleAnswered}
     />
