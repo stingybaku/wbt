@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Models\Project;
+use App\Services\ModerationService;
 use Smalot\PdfParser\Parser as PdfParser;
 use PhpOffice\PhpWord\IOFactory as WordIOFactory;
 use PhpOffice\PhpPresentation\IOFactory as PresentationIOFactory;
@@ -39,6 +40,11 @@ class ProjectSourceController extends Controller
 
         $text = trim($text);
         $charCount = mb_strlen($text);
+
+        $moderation = app(ModerationService::class)->check($text);
+        if (!$moderation->safe) {
+            abort(422, 'This content cannot be used as course material: ' . ($moderation->reason ?? 'content policy violation.'));
+        }
 
         $project->update([
             'source_type'            => $sourceType,
