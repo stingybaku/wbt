@@ -1684,6 +1684,65 @@ input[type="range"]:focus {
   color: var(--text-2);
 }
 
+/* ── Layout picker ────────────────────────────────────────────────────────── */
+
+.layout-picker {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.layout-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  min-width: 72px;
+}
+
+.layout-tile:hover:not(:disabled) {
+  border-color: var(--border-hi);
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.layout-tile.active {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.layout-tile-label {
+  font-size: 0.7rem;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.layout-tile.active .layout-tile-label {
+  color: var(--accent);
+}
+
+.layout-img-block {
+  fill: var(--accent-dim);
+  stroke: var(--accent);
+  stroke-width: 1;
+}
+
+.layout-txt-block {
+  fill: rgba(255, 255, 255, 0.06);
+  stroke: var(--border-hi);
+  stroke-width: 1;
+}
+
+.layout-tile.active .layout-img-block {
+  fill: rgba(45, 212, 191, 0.25);
+}
+
 /* ── Items editor ─────────────────────────────────────────────────────────── */
 
 .item-editor {
@@ -1853,6 +1912,37 @@ input[type="range"]:focus {
 .picker-close:hover:not(:disabled) {
   color: var(--text);
   box-shadow: none;
+}
+
+.picker-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.picker-tab {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.picker-tab:hover:not(:disabled) {
+  color: var(--text);
+  box-shadow: none;
+}
+
+.picker-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
 .picker-search {

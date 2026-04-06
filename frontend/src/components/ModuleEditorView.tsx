@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { fetchProject, fetchModule, updateModule } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import type { Project, ModuleRecord } from '../lib/types';
 import type { Module, Screen, Interaction, ImageTextLayout } from '../lib/moduleSchema';
 import { imageTextLayouts } from '../lib/moduleSchema';
-import { UnsplashPicker, type PickedImage } from './UnsplashPicker';
+import { ImagePicker, type PickedImage } from './ImagePicker';
 
 // ─── Page wrapper ─────────────────────────────────────────────────────────────
 
@@ -138,8 +138,9 @@ function ModuleEditor({
             className={`screen-item ${selected.kind === 'meta' ? 'active' : ''}`}
             onClick={() => setSelected({ kind: 'meta' })}
           >
-            <span className="screen-item-type">META</span>
+            <span />
             <span className="screen-item-title">Module Info</span>
+            <span className="screen-item-type">META</span>
           </button>
 
           {draft.screens.map((screen, i) => {
@@ -306,7 +307,7 @@ function ScreenEditor({
   return (
     <div className="editor-panel">
       {pickerOpen && (
-        <UnsplashPicker
+        <ImagePicker
           token={token}
           initialQuery={screen.title}
           onSelect={handleImagePicked}
@@ -346,21 +347,11 @@ function ScreenEditor({
 
       {screen.type === 'image_text' && (
         <div className="field-group">
-          <label htmlFor={`screen-layout-${screenIndex}`}>Layout</label>
-          <select
-            id={`screen-layout-${screenIndex}`}
+          <span className="field-label">Layout</span>
+          <LayoutPicker
             value={screen.layout ?? 'top'}
-            onChange={e => {
-              const v = e.target.value as ImageTextLayout;
-              updateScreen(s => { s.layout = v; });
-            }}
-          >
-            {imageTextLayouts.map(l => (
-              <option key={l} value={l}>
-                {l === 'top' ? 'Image top' : l === 'bottom' ? 'Image bottom' : l === 'left' ? 'Image left, text right' : 'Text left, image right'}
-              </option>
-            ))}
-          </select>
+            onChange={v => updateScreen(s => { s.layout = v; })}
+          />
         </div>
       )}
 
@@ -421,6 +412,77 @@ function ScreenEditor({
         screenFlags={screenFlags}
         onUpdate={onUpdate}
       />
+    </div>
+  );
+}
+
+// ─── Layout picker (image_text) ───────────────────────────────────────────────
+
+const LAYOUT_OPTIONS: { value: ImageTextLayout; label: string; diagram: React.ReactNode }[] = [
+  {
+    value: 'top',
+    label: 'Image top',
+    diagram: (
+      <svg viewBox="0 0 36 28" width="36" height="28" aria-hidden="true">
+        <rect x="1" y="1" width="34" height="13" rx="2" className="layout-img-block" />
+        <rect x="1" y="16" width="34" height="11" rx="2" className="layout-txt-block" />
+      </svg>
+    ),
+  },
+  {
+    value: 'bottom',
+    label: 'Image bottom',
+    diagram: (
+      <svg viewBox="0 0 36 28" width="36" height="28" aria-hidden="true">
+        <rect x="1" y="1" width="34" height="11" rx="2" className="layout-txt-block" />
+        <rect x="1" y="14" width="34" height="13" rx="2" className="layout-img-block" />
+      </svg>
+    ),
+  },
+  {
+    value: 'left',
+    label: 'Image left',
+    diagram: (
+      <svg viewBox="0 0 36 28" width="36" height="28" aria-hidden="true">
+        <rect x="1" y="1" width="16" height="26" rx="2" className="layout-img-block" />
+        <rect x="19" y="1" width="16" height="26" rx="2" className="layout-txt-block" />
+      </svg>
+    ),
+  },
+  {
+    value: 'right',
+    label: 'Image right',
+    diagram: (
+      <svg viewBox="0 0 36 28" width="36" height="28" aria-hidden="true">
+        <rect x="1" y="1" width="16" height="26" rx="2" className="layout-txt-block" />
+        <rect x="19" y="1" width="16" height="26" rx="2" className="layout-img-block" />
+      </svg>
+    ),
+  },
+];
+
+function LayoutPicker({
+  value,
+  onChange,
+}: {
+  value: ImageTextLayout;
+  onChange: (v: ImageTextLayout) => void;
+}) {
+  return (
+    <div className="layout-picker">
+      {LAYOUT_OPTIONS.map(opt => (
+        <button
+          key={opt.value}
+          type="button"
+          className={`layout-tile${value === opt.value ? ' active' : ''}`}
+          onClick={() => onChange(opt.value)}
+          title={opt.label}
+          aria-pressed={value === opt.value}
+        >
+          {opt.diagram}
+          <span className="layout-tile-label">{opt.label}</span>
+        </button>
+      ))}
     </div>
   );
 }

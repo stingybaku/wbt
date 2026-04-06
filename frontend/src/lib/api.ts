@@ -233,3 +233,27 @@ export function searchUnsplash(
   const params = new URLSearchParams({ q: query, page: String(page) });
   return request<UnsplashSearchResponse>(`/unsplash/search?${params}`, { token });
 }
+
+export type PexelsPhoto = {
+  id: string;
+  url: string;
+  thumb: string;
+  photographer: string;
+  photographer_url: string;
+  alt: string;
+};
+
+export type PexelsSearchResponse = {
+  photos: PexelsPhoto[];
+  total_pages: number;
+  page: number;
+};
+
+export function searchPexels(
+  token: string,
+  query: string,
+  page = 1
+): Promise<PexelsSearchResponse> {
+  const params = new URLSearchParams({ q: query, page: String(page) });
+  return request<PexelsSearchResponse>(`/pexels/search?${params}`, { token });
+}

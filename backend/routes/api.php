@@ -12,6 +12,7 @@ use App\Http\Controllers\ProjectInvitesController;
 use App\Http\Controllers\ProjectsController;
 use App\Http\Controllers\ProjectSourceController;
 use App\Http\Controllers\ScormController;
+use App\Http\Controllers\PexelsController;
 use App\Http\Controllers\UnsplashController;
 use App\Http\Controllers\ViewerController;
 
@@ -38,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/projects/{id}/module/flags', [ModuleFlagsController::class, 'store']);
 
     Route::get('/unsplash/search', [UnsplashController::class, 'search']);
+    Route::get('/pexels/search',   [PexelsController::class,  'search']);
 
     Route::post('/projects/{id}/scorm', [ScormController::class, 'export']);
 
