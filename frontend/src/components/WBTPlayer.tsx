@@ -293,8 +293,9 @@ function ScreenRenderer({
   const isFirst = screenIndex === 0;
   const isLast = screenIndex === totalScreens - 1;
 
+  const allAttributions = [...attribution.unsplash, ...(attribution.pexels ?? [])];
   const imageAttribution =
-    screen.image && attribution.unsplash.find(a => screen.image?.url.includes(a.image_id));
+    screen.image && allAttributions.find(a => screen.image?.url.includes(a.image_id));
 
   return (
     <>
@@ -326,7 +327,7 @@ function ScreenRenderer({
                   <a href={imageAttribution.url} target="_blank" rel="noopener noreferrer">
                     {imageAttribution.photographer}
                   </a>{' '}
-                  on Unsplash
+                  on {imageAttribution.license.replace(' License', '')}
                 </figcaption>
               )}
             </figure>
@@ -374,12 +375,14 @@ function TextScreen({ screen }: { screen: Screen }) {
 
 // ─── Image + text screen ──────────────────────────────────────────────────────
 
+type AttributionEntry = Module['attribution']['unsplash'][number];
+
 function ImageTextScreen({
   screen,
   attribution,
 }: {
   screen: Screen;
-  attribution: Module['attribution']['unsplash'][number] | null;
+  attribution: AttributionEntry | null;
 }) {
   const layout = screen.layout ?? 'top';
 
@@ -392,7 +395,7 @@ function ImageTextScreen({
           <a href={attribution.url} target="_blank" rel="noopener noreferrer">
             {attribution.photographer}
           </a>{' '}
-          on Unsplash
+          on {attribution.license.replace(' License', '')}
         </figcaption>
       )}
     </figure>

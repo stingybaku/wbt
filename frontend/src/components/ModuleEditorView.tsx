@@ -195,7 +195,7 @@ function ModuleEditor({
 
         <main className="editor-main">
           {selected.kind === 'meta' ? (
-            <MetaEditor draft={draft} onUpdate={applyUpdate} />
+            <MetaEditor draft={draft} onUpdate={applyUpdate} token={token} />
           ) : (
             <ScreenEditor
               key={selected.index}
@@ -217,12 +217,29 @@ function ModuleEditor({
 function MetaEditor({
   draft,
   onUpdate,
+  token,
 }: {
   draft: Module;
   onUpdate: (updater: (d: Module) => void) => void;
+  token: string;
 }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
   return (
     <div className="editor-panel">
+      {pickerOpen && (
+        <ImagePicker
+          token={token}
+          initialQuery={draft.meta.title}
+          onSelect={picked => {
+            onUpdate(d => { d.meta.cover_image = picked.url; });
+            setPickerOpen(false);
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
+      {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
       <h2>Module Info</h2>
 
       <div className="field-group">
@@ -265,6 +282,22 @@ function MetaEditor({
       </div>
 
       <div className="field-group">
+        <span className="field-label">Cover image</span>
+        {draft.meta.cover_image && (
+          <img
+            src={draft.meta.cover_image}
+            alt="Course cover"
+            className="screen-image-preview"
+            style={{ cursor: 'zoom-in' }}
+            onClick={() => setLightboxUrl(draft.meta.cover_image!)}
+          />
+        )}
+        <button type="button" className="ghost" onClick={() => setPickerOpen(true)}>
+          {draft.meta.cover_image ? 'Change cover' : 'Add cover image'}
+        </button>
+      </div>
+
+      <div className="field-group">
         <label htmlFor="meta-objectives">Learning Objectives (one per line)</label>
         <textarea
           id="meta-objectives"
@@ -296,6 +329,7 @@ function ScreenEditor({
   token: string;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   function updateScreen(updater: (s: Screen) => void) {
     onUpdate(d => { updater(d.screens[screenIndex]); });
@@ -304,11 +338,19 @@ function ScreenEditor({
   function handleImagePicked(picked: PickedImage) {
     onUpdate(d => {
       d.screens[screenIndex].image = { url: picked.url, alt_text: picked.alt_text };
-      // Deduplicate attribution by image_id
-      d.attribution.unsplash = d.attribution.unsplash.filter(
-        a => a.image_id !== picked.attribution.image_id
-      );
-      d.attribution.unsplash.push(picked.attribution);
+      const isPexels = picked.attribution.license.toLowerCase().includes('pexels');
+      if (isPexels) {
+        if (!d.attribution.pexels) d.attribution.pexels = [];
+        d.attribution.pexels = d.attribution.pexels.filter(
+          a => a.image_id !== picked.attribution.image_id
+        );
+        d.attribution.pexels.push(picked.attribution);
+      } else {
+        d.attribution.unsplash = d.attribution.unsplash.filter(
+          a => a.image_id !== picked.attribution.image_id
+        );
+        d.attribution.unsplash.push(picked.attribution);
+      }
     });
     setPickerOpen(false);
   }
@@ -344,6 +386,7 @@ function ScreenEditor({
           onClose={() => setPickerOpen(false)}
         />
       )}
+      {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
 
       <div className="screen-editor-header">
         <span className="screen-type-badge">{screen.type}</span>
@@ -393,6 +436,8 @@ function ScreenEditor({
               src={screen.image.url}
               alt={screen.image.alt_text}
               className="screen-image-preview"
+              style={{ cursor: 'zoom-in' }}
+              onClick={() => setLightboxUrl(screen.image!.url)}
             />
           )}
           <button
@@ -444,6 +489,22 @@ function ScreenEditor({
         screenFlags={screenFlags}
         onUpdate={onUpdate}
       />
+    </div>
+  );
+}
+
+// ─── Lightbox ─────────────────────────────────────────────────────────────────
+
+function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className="lightbox-backdrop" onClick={onClose}>
+      <img className="lightbox-img" src={url} alt="" onClick={e => e.stopPropagation()} />
     </div>
   );
 }
@@ -537,9 +598,11 @@ function ItemsEditor({
   onUpdate: (items: RevealItem[]) => void;
 }) {
   const [pickerFor, setPickerFor] = useState<number | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   return (
     <div className="field-group">
+      {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
       {pickerFor !== null && token && (
         <ImagePicker
           token={token}
@@ -584,7 +647,13 @@ function ItemsEditor({
             <div className="field-group">
               <span className="field-label">Card image</span>
               {item.image?.url && !item.image.url.includes('placeholder') && (
-                <img src={item.image.url} alt={item.image.alt_text} className="item-image-preview" />
+                <img
+                  src={item.image.url}
+                  alt={item.image.alt_text}
+                  className="item-image-preview"
+                  style={{ cursor: 'zoom-in' }}
+                  onClick={() => setLightboxUrl(item.image!.url)}
+                />
               )}
               <button type="button" className="ghost" onClick={() => setPickerFor(i)}>
                 {item.image?.url && !item.image.url.includes('placeholder') ? 'Change image' : 'Add image'}

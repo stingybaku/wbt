@@ -77,6 +77,11 @@ class ModuleController extends Controller
         $module->module_json = $data['module_json'];
         $module->save();
 
+        // Sync project cover image if the editor set one explicitly
+        if (!empty($data['module_json']['meta']['cover_image'])) {
+            $project->update(['cover_image_url' => $data['module_json']['meta']['cover_image']]);
+        }
+
         return response()->json([
             'module' => [
                 'id'               => $module->id,

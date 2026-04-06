@@ -1495,10 +1495,11 @@ input[type="range"]:focus {
 /* ── Editor shell ─────────────────────────────────────────────────────────── */
 
 .editor-shell {
-  min-height: 100vh;
+  height: calc(100vh - 52px); /* 52px = top nav height */
   display: flex;
   flex-direction: column;
   background: var(--bg);
+  overflow: hidden;
 }
 
 .editor-topbar {
@@ -1541,8 +1542,8 @@ input[type="range"]:focus {
   display: grid;
   grid-template-columns: 252px 1fr;
   flex: 1;
+  min-height: 0; /* required for flex child to respect parent height */
   overflow: hidden;
-  height: calc(100vh - 53px);
 }
 
 .editor-sidebar {
@@ -1937,6 +1938,31 @@ input[type="range"]:focus {
 }
 
 /* ── Unsplash picker ─────────────────────────────────────────────────────── */
+
+/* ── Image lightbox ───────────────────────────────────────────────────────── */
+
+.lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(8px);
+  display: grid;
+  place-items: center;
+  z-index: 200;
+  padding: 2rem;
+  cursor: zoom-out;
+}
+
+.lightbox-img {
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: var(--radius);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6);
+  cursor: default;
+}
+
+/* ── Image picker modal ────────────────────────────────────────────────────── */
 
 .picker-backdrop {
   position: fixed;
