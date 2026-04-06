@@ -152,6 +152,7 @@ type SavedProgress = {
 function progressKey(projectId: string) { return `wbt_progress_${projectId}`; }
 
 function loadProgress(projectId: string): SavedProgress | null {
+  if (!projectId) return null; // viewer mode — DB handles resume
   try {
     const raw = localStorage.getItem(progressKey(projectId));
     return raw ? (JSON.parse(raw) as SavedProgress) : null;
@@ -159,6 +160,7 @@ function loadProgress(projectId: string): SavedProgress | null {
 }
 
 function saveProgress(projectId: string, data: SavedProgress) {
+  if (!projectId) return; // viewer mode — DB handles resume
   try { localStorage.setItem(progressKey(projectId), JSON.stringify(data)); } catch { /* ignore */ }
 }
 
