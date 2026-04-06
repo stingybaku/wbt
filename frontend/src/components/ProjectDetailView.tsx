@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import type { Project, ModuleRecord, ProjectInvite } from '../lib/types';
 
 const POLL_INTERVAL_MS = 3000;
-const MAX_INVITES = 5;
+const MAX_INVITES = 10;
 
 export function ProjectDetailView() {
   const { id } = useParams<{ id: string }>();
