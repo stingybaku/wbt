@@ -358,7 +358,7 @@ a { color: var(--accent); }
 /* Offset the main content below the fixed top nav */
 .app-shell.with-topnav {
   display: block;
-  padding-top: 52px;
+  padding: 52px 0 0;
   place-items: unset;
 }
 
