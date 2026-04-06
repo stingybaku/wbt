@@ -218,7 +218,13 @@ class ProjectSourceController extends Controller
 
     private function extractFromUrl(string $url): array
     {
-        $response = Http::timeout(15)->get($url);
+        $response = Http::timeout(15)
+            ->withHeaders([
+                'User-Agent'      => 'Mozilla/5.0 (compatible; WBTForge/1.0; +https://wbtforge.com)',
+                'Accept'          => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language' => 'en-US,en;q=0.5',
+            ])
+            ->get($url);
 
         if (!$response->successful()) {
             abort(422, "Could not fetch URL (HTTP {$response->status()})");
