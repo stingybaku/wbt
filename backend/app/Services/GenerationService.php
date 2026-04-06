@@ -50,8 +50,17 @@ class GenerationService
             try {
                 $raw = $this->callClaude($sourceText, $durationMinutes, $learningObjectives, $assessmentCount, $projectTitle);
                 $parsed = $this->extractJson($raw);
+
+                if (isset($parsed['error']) && $parsed['error'] === 'content_policy_violation') {
+                    // Non-retriable — throw directly out of the retry loop
+                    throw new \DomainException('Content policy violation: ' . ($parsed['reason'] ?? 'unsafe content detected.'));
+                }
+
                 $this->validate($parsed);
                 return $parsed;
+            } catch (\DomainException $e) {
+                // Non-retriable errors (e.g. content policy violation) — propagate immediately
+                throw $e;
             } catch (\Throwable $e) {
                 $lastError = $e;
                 Log::warning("GenerationService attempt {$attempt} failed: " . $e->getMessage());
@@ -84,6 +93,8 @@ class GenerationService
 
         $systemPrompt = <<<SYSTEM
 You are an expert instructional designer. Your task is to convert source content into a structured Web-Based Training (WBT) module.
+
+CONTENT POLICY: If the source content clearly instructs readers how to commit harmful acts, glorifies violence or exploitation, or is designed to cause real-world harm, do NOT generate a module. Instead respond with this exact JSON and nothing else: {"error":"content_policy_violation","reason":"<one sentence explanation>"}
 
 You MUST respond with a single valid JSON object and nothing else — no explanation, no markdown fences (no ```), no commentary before or after. The JSON must strictly follow the schema below.
 
