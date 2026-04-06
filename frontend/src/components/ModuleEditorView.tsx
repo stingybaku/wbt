@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { BodyEditor } from './BodyEditor';
 import { Link, useParams } from 'react-router-dom';
 import { fetchProject, fetchModule, updateModule } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -7,6 +6,7 @@ import type { Project, ModuleRecord } from '../lib/types';
 import type { Module, Screen, Interaction, ImageTextLayout } from '../lib/moduleSchema';
 import type { } from '../lib/moduleSchema';
 import { ImagePicker, type PickedImage } from './ImagePicker';
+import { BodyEditor } from './BodyEditor';
 
 // ─── Page wrapper ─────────────────────────────────────────────────────────────
 
@@ -29,82 +29,53 @@ export function ModuleReviewPage() {
       .finally(() => setLoading(false));
   }, [token, id]);
 
-  if (loading) {
-    return (
-      <div className="editor-shell">
-        <p className="muted" style={{ padding: '2rem' }}>Loading…</p>
-      </div>
-    );
-  }
+  if (loading) return <div className="editor-shell"><p className="muted" style={{ padding: '2rem' }}>Loading…</p></div>;
 
   if (error || !project || !moduleRecord?.module_json) {
     return (
       <div className="editor-shell">
         <div style={{ padding: '2rem' }}>
-          <p className="muted" style={{ color: '#ef4444', marginBottom: '1rem' }}>
-            {error ?? 'Module not ready for review.'}
-          </p>
+          <p className="muted" style={{ color: '#ef4444', marginBottom: '1rem' }}>{error ?? 'Module not ready for review.'}</p>
           <Link to={`/projects/${id}`}>← Back to project</Link>
         </div>
       </div>
     );
   }
 
-  return (
-    <ModuleEditor
-      project={project}
-      moduleRecord={moduleRecord}
-      token={token!}
-      onSaved={setModuleRecord}
-    />
-  );
+  return <ModuleEditor project={project} moduleRecord={moduleRecord} token={token!} onSaved={setModuleRecord} />;
 }
 
 // ─── Editor ───────────────────────────────────────────────────────────────────
 
 type SelectedView = { kind: 'meta' } | { kind: 'screen'; index: number };
 
-function ModuleEditor({
-  project,
-  moduleRecord,
-  token,
-  onSaved,
-}: {
+function ModuleEditor({ project, moduleRecord, token, onSaved }: {
   project: Project;
   moduleRecord: ModuleRecord;
   token: string;
   onSaved: (updated: ModuleRecord) => void;
 }) {
-  const [draft, setDraft] = useState<Module>(() =>
-    JSON.parse(JSON.stringify(moduleRecord.module_json!))
-  );
+  const [draft, setDraft] = useState<Module>(() => JSON.parse(JSON.stringify(moduleRecord.module_json!)));
   const [selected, setSelected] = useState<SelectedView>({ kind: 'meta' });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
 
   function applyUpdate(updater: (d: Module) => void) {
-    setDraft(prev => {
-      const next: Module = JSON.parse(JSON.stringify(prev));
-      updater(next);
-      return next;
-    });
+    setDraft(prev => { const next: Module = JSON.parse(JSON.stringify(prev)); updater(next); return next; });
     setDirty(true);
     setSaveError(null);
   }
 
   async function handleSave() {
-    setSaving(true);
-    setSaveError(null);
+    setSaving(true); setSaveError(null);
     try {
       const res = await updateModule(token, moduleRecord.project_id, draft);
       if (res.module) onSaved(res.module);
       setDirty(false);
     } catch (err: unknown) {
       setSaveError(err instanceof Error ? err.message : 'Save failed');
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
   const openFlagCount = draft.review_flags.filter(f => f.status === 'open').length;
@@ -113,20 +84,12 @@ function ModuleEditor({
     <div className="editor-shell">
       <header className="editor-topbar">
         <div className="editor-topbar-left">
-          <Link to={`/projects/${moduleRecord.project_id}`} className="muted">
-            ← {project.title}
-          </Link>
+          <Link to={`/projects/${moduleRecord.project_id}`} className="muted">← {project.title}</Link>
           <span className="editor-topbar-title">{draft.meta.title}</span>
         </div>
         <div className="editor-topbar-right">
-          {openFlagCount > 0 && (
-            <span className="flag-count-badge">
-              {openFlagCount} open flag{openFlagCount !== 1 ? 's' : ''}
-            </span>
-          )}
-          {saveError && (
-            <span style={{ color: '#ef4444', fontSize: '0.875rem' }}>{saveError}</span>
-          )}
+          {openFlagCount > 0 && <span className="flag-count-badge">{openFlagCount} open flag{openFlagCount !== 1 ? 's' : ''}</span>}
+          {saveError && <span style={{ color: '#ef4444', fontSize: '0.875rem' }}>{saveError}</span>}
           <button onClick={handleSave} disabled={saving || !dirty}>
             {saving ? 'Saving…' : dirty ? 'Save changes' : 'Saved'}
           </button>
@@ -145,17 +108,11 @@ function ModuleEditor({
           </button>
 
           {draft.screens.map((screen, i) => {
-            const flagCount = draft.review_flags.filter(
-              f => f.target_id === screen.id && f.status === 'open'
-            ).length;
+            const flagCount = draft.review_flags.filter(f => f.target_id === screen.id && f.status === 'open').length;
             const isActive = selected.kind === 'screen' && selected.index === i;
 
             function moveScreen(from: number, to: number) {
-              applyUpdate(d => {
-                const tmp = d.screens[from];
-                d.screens[from] = d.screens[to];
-                d.screens[to] = tmp;
-              });
+              applyUpdate(d => { const tmp = d.screens[from]; d.screens[from] = d.screens[to]; d.screens[to] = tmp; });
               if (selected.kind === 'screen') {
                 if (selected.index === from) setSelected({ kind: 'screen', index: to });
                 else if (selected.index === to) setSelected({ kind: 'screen', index: from });
@@ -174,20 +131,10 @@ function ModuleEditor({
                   {flagCount > 0 && <span className="screen-item-flag">{flagCount}</span>}
                 </button>
                 <div className="screen-item-reorder">
-                  <button
-                    type="button"
-                    className="reorder-btn"
-                    title="Move up"
-                    disabled={i === 0}
-                    onClick={e => { e.stopPropagation(); moveScreen(i, i - 1); }}
-                  >↑</button>
-                  <button
-                    type="button"
-                    className="reorder-btn"
-                    title="Move down"
-                    disabled={i === draft.screens.length - 1}
-                    onClick={e => { e.stopPropagation(); moveScreen(i, i + 1); }}
-                  >↓</button>
+                  <button type="button" className="reorder-btn" title="Move up" disabled={i === 0}
+                    onClick={e => { e.stopPropagation(); moveScreen(i, i - 1); }}>↑</button>
+                  <button type="button" className="reorder-btn" title="Move down" disabled={i === draft.screens.length - 1}
+                    onClick={e => { e.stopPropagation(); moveScreen(i, i + 1); }}>↓</button>
                 </div>
               </div>
             );
@@ -195,31 +142,98 @@ function ModuleEditor({
         </nav>
 
         <main className="editor-main">
-          {selected.kind === 'meta' ? (
-            <MetaEditor draft={draft} onUpdate={applyUpdate} token={token} />
-          ) : (
-            <ScreenEditor
-              key={selected.index}
-              screen={draft.screens[selected.index]}
-              screenIndex={selected.index}
-              allFlags={draft.review_flags}
-              onUpdate={applyUpdate}
-              token={token}
-            />
-          )}
+          {selected.kind === 'meta'
+            ? <MetaEditor draft={draft} onUpdate={applyUpdate} token={token} />
+            : <ScreenEditor key={selected.index} screen={draft.screens[selected.index]} screenIndex={selected.index} allFlags={draft.review_flags} onUpdate={applyUpdate} token={token} />
+          }
         </main>
       </div>
     </div>
   );
 }
 
+// ─── Shared: lightbox ─────────────────────────────────────────────────────────
+
+function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="lightbox-backdrop" onClick={onClose}>
+      <img className="lightbox-img" src={url} alt="" onClick={e => e.stopPropagation()} />
+    </div>
+  );
+}
+
+// ─── Shared: image widget ─────────────────────────────────────────────────────
+
+function ImageWidget({ url, alt, onPickerOpen, onLightbox }: {
+  url: string | null | undefined;
+  alt?: string;
+  onPickerOpen: () => void;
+  onLightbox: (url: string) => void;
+}) {
+  const hasImage = url && !url.includes('placeholder');
+  return (
+    <div
+      className={`image-widget${hasImage ? '' : ' image-widget--empty'}`}
+      onClick={() => hasImage && onLightbox(url!)}
+    >
+      {hasImage ? (
+        <>
+          <img src={url} alt={alt ?? ''} className="image-widget-img" />
+          <div className="image-widget-overlay">
+            <button type="button" className="image-widget-change-btn"
+              onClick={e => { e.stopPropagation(); onPickerOpen(); }}>
+              Change image
+            </button>
+          </div>
+        </>
+      ) : (
+        <button type="button" className="image-widget-add-btn"
+          onClick={e => { e.stopPropagation(); onPickerOpen(); }}>
+          <span className="image-widget-add-icon">⊕</span>
+          <span>Add image</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Shared: editor card ──────────────────────────────────────────────────────
+
+function EditorCard({ label, icon, children, accent }: {
+  label: string;
+  icon?: string;
+  children: React.ReactNode;
+  accent?: 'danger';
+}) {
+  return (
+    <section className={`editor-card${accent ? ` editor-card--${accent}` : ''}`}>
+      <header className="editor-card-header">
+        {icon && <span className="editor-card-icon">{icon}</span>}
+        {label}
+      </header>
+      <div className="editor-card-body">
+        {children}
+      </div>
+    </section>
+  );
+}
+
 // ─── Meta editor ──────────────────────────────────────────────────────────────
 
-function MetaEditor({
-  draft,
-  onUpdate,
-  token,
-}: {
+const SCREEN_TYPE_LABELS: Record<Screen['type'], string> = {
+  text:         'Text',
+  image_text:   'Image + Text',
+  accordion:    'Accordion',
+  click_reveal: 'Click Reveal',
+  question:     'Question',
+};
+
+function MetaEditor({ draft, onUpdate, token }: {
   draft: Module;
   onUpdate: (updater: (d: Module) => void) => void;
   token: string;
@@ -230,99 +244,61 @@ function MetaEditor({
   return (
     <div className="editor-panel">
       {pickerOpen && (
-        <ImagePicker
-          token={token}
-          initialQuery={draft.meta.title}
-          onSelect={picked => {
-            onUpdate(d => { d.meta.cover_image = picked.url; });
-            setPickerOpen(false);
-          }}
-          onClose={() => setPickerOpen(false)}
-        />
+        <ImagePicker token={token} initialQuery={draft.meta.title}
+          onSelect={picked => { onUpdate(d => { d.meta.cover_image = picked.url; }); setPickerOpen(false); }}
+          onClose={() => setPickerOpen(false)} />
       )}
       {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
-      <h2>Module Info</h2>
 
-      <div className="field-group">
-        <label htmlFor="meta-title">Title</label>
-        <input
-          id="meta-title"
-          value={draft.meta.title}
-          onChange={e => {
-            const v = e.target.value;
-            onUpdate(d => { d.meta.title = v; });
-          }}
+      <div className="editor-page-header">
+        <h2 className="editor-page-title">Module Info</h2>
+      </div>
+
+      <EditorCard label="Course details" icon="✦">
+        <div className="field-group">
+          <label htmlFor="meta-title">Title</label>
+          <input id="meta-title" value={draft.meta.title}
+            onChange={e => { const v = e.target.value; onUpdate(d => { d.meta.title = v; }); }} />
+        </div>
+        <div className="field-row">
+          <div className="field-group">
+            <label htmlFor="meta-audience">Audience</label>
+            <input id="meta-audience" value={draft.meta.audience}
+              onChange={e => { const v = e.target.value; onUpdate(d => { d.meta.audience = v; }); }} />
+          </div>
+          <div className="field-group" style={{ minWidth: '130px' }}>
+            <label htmlFor="meta-duration">Duration (min)</label>
+            <input id="meta-duration" type="number" min={10} max={30} value={draft.meta.duration_minutes}
+              onChange={e => { const v = Number(e.target.value); onUpdate(d => { d.meta.duration_minutes = v; }); }} />
+          </div>
+        </div>
+      </EditorCard>
+
+      <EditorCard label="Cover image" icon="⊞">
+        <ImageWidget
+          url={draft.meta.cover_image}
+          alt="Course cover"
+          onPickerOpen={() => setPickerOpen(true)}
+          onLightbox={url => setLightboxUrl(url)}
         />
-      </div>
+      </EditorCard>
 
-      <div className="field-group">
-        <label htmlFor="meta-audience">Audience</label>
-        <input
-          id="meta-audience"
-          value={draft.meta.audience}
-          onChange={e => {
-            const v = e.target.value;
-            onUpdate(d => { d.meta.audience = v; });
-          }}
-        />
-      </div>
-
-      <div className="field-group">
-        <label htmlFor="meta-duration">Duration (minutes)</label>
-        <input
-          id="meta-duration"
-          type="number"
-          min={10}
-          max={30}
-          value={draft.meta.duration_minutes}
-          onChange={e => {
-            const v = Number(e.target.value);
-            onUpdate(d => { d.meta.duration_minutes = v; });
-          }}
-        />
-      </div>
-
-      <div className="field-group">
-        <span className="field-label">Cover image</span>
-        {draft.meta.cover_image && (
-          <img
-            src={draft.meta.cover_image}
-            alt="Course cover"
-            className="screen-image-preview"
-            style={{ cursor: 'zoom-in' }}
-            onClick={() => setLightboxUrl(draft.meta.cover_image!)}
-          />
-        )}
-        <button type="button" className="ghost" onClick={() => setPickerOpen(true)}>
-          {draft.meta.cover_image ? 'Change cover' : 'Add cover image'}
-        </button>
-      </div>
-
-      <div className="field-group">
-        <label htmlFor="meta-objectives">Learning Objectives (one per line)</label>
+      <EditorCard label="Learning objectives" icon="◎">
+        <p className="editor-card-hint">One objective per line.</p>
         <textarea
           id="meta-objectives"
           rows={6}
           value={draft.learning_objectives.join('\n')}
-          onChange={e => {
-            const v = e.target.value;
-            onUpdate(d => { d.learning_objectives = v.split('\n'); });
-          }}
+          onChange={e => { const v = e.target.value; onUpdate(d => { d.learning_objectives = v.split('\n'); }); }}
         />
-      </div>
+      </EditorCard>
     </div>
   );
 }
 
 // ─── Screen editor ────────────────────────────────────────────────────────────
 
-function ScreenEditor({
-  screen,
-  screenIndex,
-  allFlags,
-  onUpdate,
-  token,
-}: {
+function ScreenEditor({ screen, screenIndex, allFlags, onUpdate, token }: {
   screen: Screen;
   screenIndex: number;
   allFlags: Module['review_flags'];
@@ -342,14 +318,10 @@ function ScreenEditor({
       const isPexels = picked.attribution.license.toLowerCase().includes('pexels');
       if (isPexels) {
         if (!d.attribution.pexels) d.attribution.pexels = [];
-        d.attribution.pexels = d.attribution.pexels.filter(
-          a => a.image_id !== picked.attribution.image_id
-        );
+        d.attribution.pexels = d.attribution.pexels.filter(a => a.image_id !== picked.attribution.image_id);
         d.attribution.pexels.push(picked.attribution);
       } else {
-        d.attribution.unsplash = d.attribution.unsplash.filter(
-          a => a.image_id !== picked.attribution.image_id
-        );
+        d.attribution.unsplash = d.attribution.unsplash.filter(a => a.image_id !== picked.attribution.image_id);
         d.attribution.unsplash.push(picked.attribution);
       }
     });
@@ -357,17 +329,12 @@ function ScreenEditor({
   }
 
   const screenFlags = allFlags.reduce<{ flag: Module['review_flags'][number]; globalIndex: number }[]>(
-    (acc, flag, i) => {
-      if (flag.target_id === screen.id) acc.push({ flag, globalIndex: i });
-      return acc;
-    },
-    []
+    (acc, flag, i) => { if (flag.target_id === screen.id) acc.push({ flag, globalIndex: i }); return acc; }, []
   );
 
   const interaction0 = screen.interactions[0];
-  const isAccordionOrReveal = screen.type === 'accordion' || screen.type === 'click_reveal';
   const hasItemsInteraction =
-    isAccordionOrReveal &&
+    (screen.type === 'accordion' || screen.type === 'click_reveal') &&
     interaction0 &&
     (interaction0.kind === 'accordion' || interaction0.kind === 'click_reveal');
   const hasChoiceInteraction =
@@ -375,102 +342,68 @@ function ScreenEditor({
     interaction0 &&
     (interaction0.kind === 'single_choice' || interaction0.kind === 'multi_choice');
 
-  const showImageSection = true;
+  const openFlags = screenFlags.filter(f => f.flag.status === 'open');
 
   return (
     <div className="editor-panel">
       {pickerOpen && (
-        <ImagePicker
-          token={token}
-          initialQuery={screen.title}
-          onSelect={handleImagePicked}
-          onClose={() => setPickerOpen(false)}
-        />
+        <ImagePicker token={token} initialQuery={screen.title}
+          onSelect={handleImagePicked} onClose={() => setPickerOpen(false)} />
       )}
       {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
 
-      <div className="screen-editor-header">
-        <span className="screen-type-badge">{screen.type}</span>
-        <span className="muted">Screen {screenIndex + 1} · {screen.id}</span>
+      <div className="editor-page-header">
+        <span className={`screen-type-pill screen-type-pill--${screen.type}`}>
+          {SCREEN_TYPE_LABELS[screen.type]}
+        </span>
+        <span className="editor-page-screen-id">Screen {screenIndex + 1} · {screen.id}</span>
       </div>
 
-      <div className="field-group">
-        <label htmlFor={`screen-title-${screenIndex}`}>Title</label>
-        <input
-          id={`screen-title-${screenIndex}`}
-          value={screen.title}
-          onChange={e => {
-            const v = e.target.value;
-            updateScreen(s => { s.title = v; });
-          }}
-        />
-      </div>
-
-      <div className="field-group">
-        <label>Body</label>
-        <BodyEditor
-          value={screen.body}
-          onChange={v => updateScreen(s => { s.body = v; })}
-        />
-      </div>
-
-      {screen.type === 'image_text' && (
+      <EditorCard label="Content" icon="✎">
         <div className="field-group">
-          <span className="field-label">Layout</span>
-          <LayoutPicker
-            value={screen.layout ?? 'top'}
-            onChange={v => updateScreen(s => { s.layout = v; })}
-          />
+          <label htmlFor={`screen-title-${screenIndex}`}>Title</label>
+          <input id={`screen-title-${screenIndex}`} value={screen.title}
+            onChange={e => { const v = e.target.value; updateScreen(s => { s.title = v; }); }} />
         </div>
-      )}
-
-      {showImageSection && (
         <div className="field-group">
-          <span className="field-label">Image</span>
-          {screen.image?.url && (
-            <img
-              src={screen.image.url}
-              alt={screen.image.alt_text}
-              className="screen-image-preview"
-              style={{ cursor: 'zoom-in' }}
-              onClick={() => setLightboxUrl(screen.image!.url)}
-            />
-          )}
-          <button
-            type="button"
-            className="ghost"
-            onClick={() => setPickerOpen(true)}
-          >
-            {screen.image ? 'Change image' : 'Add image'}
-          </button>
-          {screen.image && (
-            <div className="field-group">
-              <label htmlFor={`screen-alt-${screenIndex}`}>Alt text</label>
-              <input
-                id={`screen-alt-${screenIndex}`}
-                value={screen.image.alt_text}
-                onChange={e => {
-                  const v = e.target.value;
-                  updateScreen(s => { if (s.image) s.image.alt_text = v; });
-                }}
-              />
-            </div>
-          )}
+          <label>Body</label>
+          <BodyEditor value={screen.body} onChange={v => updateScreen(s => { s.body = v; })} />
         </div>
-      )}
+      </EditorCard>
+
+      <EditorCard label="Media" icon="⊞">
+        <ImageWidget
+          url={screen.image?.url}
+          alt={screen.image?.alt_text}
+          onPickerOpen={() => setPickerOpen(true)}
+          onLightbox={url => setLightboxUrl(url)}
+        />
+        {screen.type === 'image_text' && (
+          <div className="field-group">
+            <label>Layout</label>
+            <LayoutPicker value={screen.layout ?? 'top'} onChange={v => updateScreen(s => { s.layout = v; })} />
+          </div>
+        )}
+        {screen.image && !screen.image.url.includes('placeholder') && (
+          <div className="field-group">
+            <label htmlFor={`screen-alt-${screenIndex}`}>Alt text</label>
+            <input id={`screen-alt-${screenIndex}`} value={screen.image.alt_text}
+              onChange={e => { const v = e.target.value; updateScreen(s => { if (s.image) s.image.alt_text = v; }); }} />
+          </div>
+        )}
+      </EditorCard>
 
       {hasItemsInteraction && (
-        <ItemsEditor
-          label={screen.type === 'accordion' ? 'Accordion items' : 'Click-reveal items'}
-          items={(interaction0 as { kind: string; items: RevealItem[] }).items}
-          showImages={screen.type === 'click_reveal'}
-          token={token}
-          onUpdate={items =>
-            updateScreen(s => {
+        <EditorCard label={screen.type === 'accordion' ? 'Accordion items' : 'Cards'} icon="⊟">
+          <ItemsEditor
+            items={(interaction0 as { kind: string; items: RevealItem[] }).items}
+            showImages={screen.type === 'click_reveal'}
+            token={token}
+            onUpdate={items => updateScreen(s => {
               (s.interactions[0] as { kind: string; items: RevealItem[] }).items = items;
-            })
-          }
-        />
+            })}
+          />
+        </EditorCard>
       )}
 
       {hasChoiceInteraction && (
@@ -480,27 +413,9 @@ function ScreenEditor({
         />
       )}
 
-      <FlagsPanel
-        screenId={screen.id}
-        screenFlags={screenFlags}
-        onUpdate={onUpdate}
-      />
-    </div>
-  );
-}
-
-// ─── Lightbox ─────────────────────────────────────────────────────────────────
-
-function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  return (
-    <div className="lightbox-backdrop" onClick={onClose}>
-      <img className="lightbox-img" src={url} alt="" onClick={e => e.stopPropagation()} />
+      <EditorCard label="Review flags" icon="⚑" accent={openFlags.length > 0 ? 'danger' : undefined}>
+        <FlagsPanel screenId={screen.id} screenFlags={screenFlags} onUpdate={onUpdate} />
+      </EditorCard>
     </div>
   );
 }
@@ -509,8 +424,7 @@ function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
 
 const LAYOUT_OPTIONS: { value: ImageTextLayout; label: string; diagram: React.ReactNode }[] = [
   {
-    value: 'top',
-    label: 'Image top',
+    value: 'top', label: 'Image top',
     diagram: (
       <svg viewBox="0 0 36 28" width="36" height="28" aria-hidden="true">
         <rect x="1" y="1" width="34" height="13" rx="2" className="layout-img-block" />
@@ -519,8 +433,7 @@ const LAYOUT_OPTIONS: { value: ImageTextLayout; label: string; diagram: React.Re
     ),
   },
   {
-    value: 'bottom',
-    label: 'Image bottom',
+    value: 'bottom', label: 'Image bottom',
     diagram: (
       <svg viewBox="0 0 36 28" width="36" height="28" aria-hidden="true">
         <rect x="1" y="1" width="34" height="11" rx="2" className="layout-txt-block" />
@@ -529,8 +442,7 @@ const LAYOUT_OPTIONS: { value: ImageTextLayout; label: string; diagram: React.Re
     ),
   },
   {
-    value: 'left',
-    label: 'Image left',
+    value: 'left', label: 'Image left',
     diagram: (
       <svg viewBox="0 0 36 28" width="36" height="28" aria-hidden="true">
         <rect x="1" y="1" width="16" height="26" rx="2" className="layout-img-block" />
@@ -539,8 +451,7 @@ const LAYOUT_OPTIONS: { value: ImageTextLayout; label: string; diagram: React.Re
     ),
   },
   {
-    value: 'right',
-    label: 'Image right',
+    value: 'right', label: 'Image right',
     diagram: (
       <svg viewBox="0 0 36 28" width="36" height="28" aria-hidden="true">
         <rect x="1" y="1" width="16" height="26" rx="2" className="layout-txt-block" />
@@ -550,24 +461,13 @@ const LAYOUT_OPTIONS: { value: ImageTextLayout; label: string; diagram: React.Re
   },
 ];
 
-function LayoutPicker({
-  value,
-  onChange,
-}: {
-  value: ImageTextLayout;
-  onChange: (v: ImageTextLayout) => void;
-}) {
+function LayoutPicker({ value, onChange }: { value: ImageTextLayout; onChange: (v: ImageTextLayout) => void }) {
   return (
     <div className="layout-picker">
       {LAYOUT_OPTIONS.map(opt => (
-        <button
-          key={opt.value}
-          type="button"
+        <button key={opt.value} type="button"
           className={`layout-tile${value === opt.value ? ' active' : ''}`}
-          onClick={() => onChange(opt.value)}
-          title={opt.label}
-          aria-pressed={value === opt.value}
-        >
+          onClick={() => onChange(opt.value)} title={opt.label} aria-pressed={value === opt.value}>
           {opt.diagram}
           <span className="layout-tile-label">{opt.label}</span>
         </button>
@@ -580,14 +480,7 @@ function LayoutPicker({
 
 type RevealItem = { title: string; body: string; image?: { url: string; alt_text: string } | null };
 
-function ItemsEditor({
-  label,
-  items,
-  showImages = false,
-  token,
-  onUpdate,
-}: {
-  label: string;
+function ItemsEditor({ items, showImages = false, token, onUpdate }: {
   items: RevealItem[];
   showImages?: boolean;
   token?: string;
@@ -597,60 +490,45 @@ function ItemsEditor({
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   return (
-    <div className="field-group">
+    <div className="items-editor">
       {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
       {pickerFor !== null && token && (
-        <ImagePicker
-          token={token}
-          initialQuery={items[pickerFor]?.title ?? ''}
+        <ImagePicker token={token} initialQuery={items[pickerFor]?.title ?? ''}
           onSelect={picked => {
-            const next = items.map((it, j) =>
-              j === pickerFor ? { ...it, image: { url: picked.url, alt_text: picked.alt_text } } : it
-            );
-            onUpdate(next);
+            onUpdate(items.map((it, j) => j === pickerFor ? { ...it, image: { url: picked.url, alt_text: picked.alt_text } } : it));
             setPickerFor(null);
           }}
-          onClose={() => setPickerFor(null)}
-        />
+          onClose={() => setPickerFor(null)} />
       )}
-      <span className="field-label">{label}</span>
+
       {items.map((item, i) => (
-        <div key={i} className="item-editor">
-          <div className="field-group">
-            <label htmlFor={`item-title-${i}`}>Item {i + 1} — title</label>
-            <input
-              id={`item-title-${i}`}
-              value={item.title}
-              onChange={e => {
-                const v = e.target.value;
-                onUpdate(items.map((it, j) => j === i ? { ...it, title: v } : it));
-              }}
-            />
+        <div key={i} className="item-card">
+          <div className="item-card-header">
+            <span>Item {i + 1}</span>
           </div>
-          <div className="field-group">
-            <label>Item {i + 1} — body</label>
-            <BodyEditor
-              value={item.body}
-              onChange={v => onUpdate(items.map((it, j) => j === i ? { ...it, body: v } : it))}
-            />
-          </div>
-          {showImages && (
+          <div className="item-card-body">
             <div className="field-group">
-              <span className="field-label">Card image</span>
-              {item.image?.url && !item.image.url.includes('placeholder') && (
-                <img
-                  src={item.image.url}
-                  alt={item.image.alt_text}
-                  className="item-image-preview"
-                  style={{ cursor: 'zoom-in' }}
-                  onClick={() => setLightboxUrl(item.image!.url)}
-                />
-              )}
-              <button type="button" className="ghost" onClick={() => setPickerFor(i)}>
-                {item.image?.url && !item.image.url.includes('placeholder') ? 'Change image' : 'Add image'}
-              </button>
+              <label htmlFor={`item-title-${i}`}>Title</label>
+              <input id={`item-title-${i}`} value={item.title}
+                onChange={e => { const v = e.target.value; onUpdate(items.map((it, j) => j === i ? { ...it, title: v } : it)); }} />
             </div>
-          )}
+            <div className="field-group">
+              <label>Body</label>
+              <BodyEditor value={item.body}
+                onChange={v => onUpdate(items.map((it, j) => j === i ? { ...it, body: v } : it))} />
+            </div>
+            {showImages && (
+              <div className="field-group">
+                <label>Card image</label>
+                <ImageWidget
+                  url={item.image?.url}
+                  alt={item.image?.alt_text}
+                  onPickerOpen={() => setPickerFor(i)}
+                  onLightbox={url => setLightboxUrl(url)}
+                />
+              </div>
+            )}
+          </div>
         </div>
       ))}
     </div>
@@ -661,10 +539,7 @@ function ItemsEditor({
 
 type ChoiceInteraction = Extract<Interaction, { kind: 'single_choice' | 'multi_choice' }>;
 
-function QuestionInteractionEditor({
-  interaction,
-  onUpdate,
-}: {
+function QuestionInteractionEditor({ interaction, onUpdate }: {
   interaction: ChoiceInteraction;
   onUpdate: (updated: ChoiceInteraction) => void;
 }) {
@@ -674,129 +549,82 @@ function QuestionInteractionEditor({
     onUpdate(next);
   }
 
+  const isSingle = interaction.kind === 'single_choice';
+
   return (
-    <div className="field-group">
-      <span className="field-label">
-        Interaction — {interaction.kind === 'single_choice' ? 'Single choice' : 'Multiple choice'}
-      </span>
-
-      <div className="field-group">
-        <label>Prompt</label>
-        <input
-          value={interaction.prompt}
-          onChange={e => {
-            const v = e.target.value;
-            update(i => { i.prompt = v; });
-          }}
-        />
-      </div>
-
-      <div className="field-group">
-        <div className="choices-header">
-          <span className="field-label">Choices</span>
-          <button
-            type="button"
-            className="ghost choices-shuffle"
-            title="Shuffle order"
-            onClick={() => update(i => {
-              for (let j = i.choices.length - 1; j > 0; j--) {
-                const k = Math.floor(Math.random() * (j + 1));
-                [i.choices[j], i.choices[k]] = [i.choices[k], i.choices[j]];
-              }
-            })}
-          >
-            ⇄ Shuffle
-          </button>
+    <>
+      <EditorCard label={isSingle ? 'Single choice question' : 'Multiple choice question'} icon="?">
+        <div className="field-group">
+          <label>Prompt</label>
+          <input value={interaction.prompt}
+            onChange={e => { const v = e.target.value; update(i => { i.prompt = v; }); }} />
         </div>
-        {interaction.choices.map((choice, ci) => (
-          <div key={choice.id} className="choice-row">
-            <input
-              className="choice-text"
-              value={choice.text}
-              onChange={e => {
-                const v = e.target.value;
-                update(i => { i.choices[ci].text = v; });
-              }}
-            />
-            <label className="choice-correct">
-              <input
-                type={interaction.kind === 'single_choice' ? 'radio' : 'checkbox'}
-                name={`correct-${screenIndexFromId(interaction)}`}
-                checked={choice.is_correct}
-                onChange={e => {
-                  const checked = e.target.checked;
-                  update(i => {
-                    if (i.kind === 'single_choice') {
-                      i.choices.forEach((c, j) => { c.is_correct = j === ci; });
-                    } else {
-                      i.choices[ci].is_correct = checked;
-                    }
-                  });
-                }}
-              />
-              Correct
-            </label>
-            <div className="choice-reorder">
-              <button
-                type="button"
-                className="reorder-btn"
-                title="Move up"
-                disabled={ci === 0}
-                onClick={() => update(i => {
-                  [i.choices[ci - 1], i.choices[ci]] = [i.choices[ci], i.choices[ci - 1]];
-                })}
-              >↑</button>
-              <button
-                type="button"
-                className="reorder-btn"
-                title="Move down"
-                disabled={ci === interaction.choices.length - 1}
-                onClick={() => update(i => {
-                  [i.choices[ci], i.choices[ci + 1]] = [i.choices[ci + 1], i.choices[ci]];
-                })}
-              >↓</button>
-            </div>
+
+        <div className="field-group">
+          <div className="choices-header">
+            <label>Choices</label>
+            <button type="button" className="ghost choices-shuffle" title="Shuffle order"
+              onClick={() => update(i => {
+                for (let j = i.choices.length - 1; j > 0; j--) {
+                  const k = Math.floor(Math.random() * (j + 1));
+                  [i.choices[j], i.choices[k]] = [i.choices[k], i.choices[j]];
+                }
+              })}>⇄ Shuffle</button>
           </div>
-        ))}
-      </div>
 
-      <div className="field-group">
-        <label>Feedback — correct</label>
-        <input
-          value={interaction.feedback.correct}
-          onChange={e => {
-            const v = e.target.value;
-            update(i => { i.feedback.correct = v; });
-          }}
-        />
-      </div>
+          <div className="choices-list">
+            {interaction.choices.map((choice, ci) => (
+              <div key={choice.id} className={`choice-item${choice.is_correct ? ' choice-item--correct' : ''}`}>
+                <label className="choice-indicator" title={choice.is_correct ? 'Correct answer' : 'Mark as correct'}>
+                  <input
+                    type={isSingle ? 'radio' : 'checkbox'}
+                    name={`correct-${interaction.prompt.slice(0, 20)}`}
+                    checked={choice.is_correct}
+                    onChange={e => {
+                      const checked = e.target.checked;
+                      update(i => {
+                        if (i.kind === 'single_choice') i.choices.forEach((c, j) => { c.is_correct = j === ci; });
+                        else i.choices[ci].is_correct = checked;
+                      });
+                    }}
+                  />
+                </label>
+                <input
+                  className="choice-text-input"
+                  value={choice.text}
+                  onChange={e => { const v = e.target.value; update(i => { i.choices[ci].text = v; }); }}
+                />
+                <div className="choice-actions">
+                  <button type="button" className="reorder-btn" title="Move up" disabled={ci === 0}
+                    onClick={() => update(i => { [i.choices[ci - 1], i.choices[ci]] = [i.choices[ci], i.choices[ci - 1]]; })}>↑</button>
+                  <button type="button" className="reorder-btn" title="Move down" disabled={ci === interaction.choices.length - 1}
+                    onClick={() => update(i => { [i.choices[ci], i.choices[ci + 1]] = [i.choices[ci + 1], i.choices[ci]]; })}>↓</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </EditorCard>
 
-      <div className="field-group">
-        <label>Feedback — incorrect</label>
-        <input
-          value={interaction.feedback.incorrect}
-          onChange={e => {
-            const v = e.target.value;
-            update(i => { i.feedback.incorrect = v; });
-          }}
-        />
-      </div>
-    </div>
+      <EditorCard label="Feedback" icon="✉">
+        <div className="field-group">
+          <label>Correct answer feedback</label>
+          <input value={interaction.feedback.correct}
+            onChange={e => { const v = e.target.value; update(i => { i.feedback.correct = v; }); }} />
+        </div>
+        <div className="field-group">
+          <label>Incorrect answer feedback</label>
+          <input value={interaction.feedback.incorrect}
+            onChange={e => { const v = e.target.value; update(i => { i.feedback.incorrect = v; }); }} />
+        </div>
+      </EditorCard>
+    </>
   );
-}
-
-// Use prompt as a stable key for radio group name
-function screenIndexFromId(interaction: ChoiceInteraction) {
-  return interaction.prompt.slice(0, 20);
 }
 
 // ─── Flags panel ──────────────────────────────────────────────────────────────
 
-function FlagsPanel({
-  screenId,
-  screenFlags,
-  onUpdate,
-}: {
+function FlagsPanel({ screenId, screenFlags, onUpdate }: {
   screenId: string;
   screenFlags: { flag: Module['review_flags'][number]; globalIndex: number }[];
   onUpdate: (updater: (d: Module) => void) => void;
@@ -807,27 +635,19 @@ function FlagsPanel({
   function addFlag() {
     if (!reason.trim()) return;
     const newFlag: Module['review_flags'][number] = {
-      target_id: screenId,
-      target_type: 'screen',
-      reason: reason.trim(),
-      notes: notes.trim() || undefined,
-      status: 'open',
+      target_id: screenId, target_type: 'screen',
+      reason: reason.trim(), notes: notes.trim() || undefined, status: 'open',
     };
     onUpdate(d => { d.review_flags.push(newFlag); });
-    setReason('');
-    setNotes('');
+    setReason(''); setNotes('');
   }
 
   function resolveFlag(globalIndex: number) {
-    onUpdate(d => {
-      d.review_flags[globalIndex] = { ...d.review_flags[globalIndex], status: 'resolved' };
-    });
+    onUpdate(d => { d.review_flags[globalIndex] = { ...d.review_flags[globalIndex], status: 'resolved' }; });
   }
 
   return (
     <div className="flags-panel">
-      <span className="field-label">Review flags</span>
-
       {screenFlags.length > 0 && (
         <ul className="flag-list">
           {screenFlags.map(({ flag, globalIndex }) => (
@@ -838,38 +658,24 @@ function FlagsPanel({
                 {flag.notes && <span className="flag-notes muted">{flag.notes}</span>}
               </div>
               {flag.status === 'open' && (
-                <button type="button" className="ghost" onClick={() => resolveFlag(globalIndex)}>
-                  Resolve
-                </button>
+                <button type="button" className="ghost" onClick={() => resolveFlag(globalIndex)}>Resolve</button>
               )}
             </li>
           ))}
         </ul>
       )}
-
       <div className="flag-add-form">
         <div className="field-group">
           <label htmlFor={`flag-reason-${screenId}`}>Flag reason</label>
-          <input
-            id={`flag-reason-${screenId}`}
-            placeholder="e.g. Inaccurate content"
-            value={reason}
-            onChange={e => setReason(e.target.value)}
-          />
+          <input id={`flag-reason-${screenId}`} placeholder="e.g. Inaccurate content"
+            value={reason} onChange={e => setReason(e.target.value)} />
         </div>
         <div className="field-group">
           <label htmlFor={`flag-notes-${screenId}`}>Notes (optional)</label>
-          <textarea
-            id={`flag-notes-${screenId}`}
-            rows={2}
-            placeholder="Additional context…"
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-          />
+          <textarea id={`flag-notes-${screenId}`} rows={2} placeholder="Additional context…"
+            value={notes} onChange={e => setNotes(e.target.value)} />
         </div>
-        <button type="button" className="ghost" onClick={addFlag} disabled={!reason.trim()}>
-          Add flag
-        </button>
+        <button type="button" className="ghost" onClick={addFlag} disabled={!reason.trim()}>Add flag</button>
       </div>
     </div>
   );
