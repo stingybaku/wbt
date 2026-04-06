@@ -43,10 +43,14 @@ function RichText({ text, className }: { text: string; className?: string }) {
     } else if (ulMatch) {
       flushOl();
       ulItems.push(ulMatch[1]);
+    } else if (line === '') {
+      // Blank lines between list items must not flush the list — Claude often
+      // separates numbered items with a blank line, which would otherwise create
+      // individual <ol> elements each starting at 1.
     } else {
       flushOl();
       flushUl();
-      if (line) nodes.push(<p key={nodes.length} className={className ?? 'player-body'}>{line}</p>);
+      nodes.push(<p key={nodes.length} className={className ?? 'player-body'}>{line}</p>);
     }
   }
   flushOl();
