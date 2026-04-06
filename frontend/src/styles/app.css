@@ -802,6 +802,57 @@ button.ghost:hover:not(:disabled) {
   text-shadow: none;
 }
 
+/* ── Project detail metadata strip ───────────────────────────────────────── */
+
+.detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: var(--text-2);
+}
+
+.detail-meta-sep {
+  color: var(--text-3);
+  user-select: none;
+}
+
+/* ── Viewer progress summary ──────────────────────────────────────────────── */
+
+.viewer-summary {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.viewer-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.viewer-summary-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.viewer-summary-item--completed { color: var(--success); }
+.viewer-summary-item--completed .viewer-summary-dot { background: var(--success); }
+
+.viewer-summary-item--progress { color: var(--accent); }
+.viewer-summary-item--progress .viewer-summary-dot { background: var(--accent); }
+
+.viewer-summary-item--pending { color: var(--text-2); }
+.viewer-summary-item--pending .viewer-summary-dot { background: var(--text-3); }
+
 /* ── Project detail dashboard ─────────────────────────────────────────────── */
 
 .stats-strip {

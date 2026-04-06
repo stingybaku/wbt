@@ -126,6 +126,25 @@ export function ProjectDetailView() {
       </div>
 
       <section className="layout">
+        {/* Project metadata — replaces the Project Info card */}
+        <div className="detail-meta">
+          <span>
+            {project.source_type === 'file'
+              ? 'Uploaded file'
+              : project.source_type === 'url'
+                ? project.source_url
+                : 'No source attached'}
+          </span>
+          {project.source_character_count != null && (
+            <><span className="detail-meta-sep">·</span><span>{project.source_character_count.toLocaleString()} chars</span></>
+          )}
+          <span className="detail-meta-sep">·</span>
+          <span>Created {new Date(project.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+          {project.rights_attestation && (
+            <><span className="detail-meta-sep">·</span><span>Rights attested</span></>
+          )}
+        </div>
+
         {/* Stats strip */}
         <div className="stats-strip">
           <div className="stat-card">
@@ -181,26 +200,6 @@ export function ProjectDetailView() {
               />
             </div>
 
-            <div className="card">
-              <h2>Project Info</h2>
-              <dl className="detail-dl">
-                <dt>Source</dt>
-                <dd>
-                  {project.source_type
-                    ? project.source_type === 'url'
-                      ? project.source_url
-                      : 'Uploaded file'
-                    : <span className="muted">No source attached</span>}
-                  {project.source_character_count != null && (
-                    <span className="muted"> — {project.source_character_count.toLocaleString()} chars</span>
-                  )}
-                </dd>
-                <dt>Rights attested</dt>
-                <dd>{project.rights_attestation ? 'Yes' : 'No'}</dd>
-                <dt>Created</dt>
-                <dd>{new Date(project.created_at).toLocaleString()}</dd>
-              </dl>
-            </div>
           </div>
 
           {/* Right column */}
@@ -328,6 +327,10 @@ function ViewersPanel({
   const activeInvites = invites.filter(i => i.is_active);
   const slotsLeft = MAX_INVITES - activeInvites.length;
 
+  const completedCount   = invites.filter(i => i.progress?.completed_at).length;
+  const inProgressCount  = invites.filter(i => i.progress && !i.progress.completed_at).length;
+  const notStartedCount  = invites.filter(i => i.is_active && !i.progress).length;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
@@ -374,6 +377,29 @@ function ViewersPanel({
           {activeInvites.length} / {MAX_INVITES}
         </span>
       </div>
+
+      {invites.length > 0 && (
+        <div className="viewer-summary">
+          {completedCount > 0 && (
+            <span className="viewer-summary-item viewer-summary-item--completed">
+              <span className="viewer-summary-dot" />
+              {completedCount} completed
+            </span>
+          )}
+          {inProgressCount > 0 && (
+            <span className="viewer-summary-item viewer-summary-item--progress">
+              <span className="viewer-summary-dot" />
+              {inProgressCount} in progress
+            </span>
+          )}
+          {notStartedCount > 0 && (
+            <span className="viewer-summary-item viewer-summary-item--pending">
+              <span className="viewer-summary-dot" />
+              {notStartedCount} not started
+            </span>
+          )}
+        </div>
+      )}
 
       {!moduleReady && (
         <p className="muted" style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>
