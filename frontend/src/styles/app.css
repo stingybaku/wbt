@@ -155,9 +155,15 @@ a { color: var(--accent); }
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--text-2);
+  color: var(--text);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
+}
+
+.top-nav-icon-btn svg {
+  display: block;
+  fill: currentColor;
+  flex-shrink: 0;
 }
 
 .top-nav-icon-btn:hover {
