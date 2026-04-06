@@ -108,6 +108,7 @@ a { color: var(--accent); }
 
 .layout {
   width: min(920px, 100%);
+  margin: 0 auto;
   display: grid;
   gap: 1rem;
 }
