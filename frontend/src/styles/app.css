@@ -2407,6 +2407,9 @@ input[type="range"]:focus {
   text-align: center;
   line-height: 1.3;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Viewed indicator */
@@ -2760,6 +2763,38 @@ input[type="range"]:focus {
   margin: 0;
   color: #6b7280;
   font-size: 0.95rem;
+}
+
+.player-sources {
+  margin-top: 1.25rem;
+  width: 100%;
+  text-align: left;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.player-sources-heading {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-2);
+}
+
+.player-sources-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.player-sources-item {
+  font-size: 0.85rem;
+  color: var(--text-2);
+  word-break: break-word;
 }
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */

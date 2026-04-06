@@ -86,6 +86,7 @@ export const moduleSchema = z
         })
       ),
     }),
+    sources: z.array(z.string()).optional(),
     review_flags: z
       .array(
         z.object({

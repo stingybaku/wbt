@@ -217,7 +217,21 @@ class GenerationJob implements ShouldQueue
             ));
         }
 
-        return trim($refined) ?: $lower;
+        $refined = trim($refined) ?: $lower;
+
+        // Limit to the 3 most meaningful words to keep the query focused
+        $refinedWords = preg_split('/\s+/', $refined);
+        if (count($refinedWords) > 3) {
+            $refined = implode(' ', array_slice($refinedWords, 0, 3));
+        }
+
+        // Append a grounding suffix for very abstract single-word queries so stock
+        // photo engines return conceptual/workplace images rather than literal portraits
+        if (count(preg_split('/\s+/', $refined)) === 1 && strlen($refined) > 3) {
+            $refined .= ' concept';
+        }
+
+        return $refined;
     }
 
     /**

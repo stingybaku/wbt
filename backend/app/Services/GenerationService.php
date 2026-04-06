@@ -119,6 +119,7 @@ REQUIRED JSON SCHEMA:
   "attribution": {
     "unsplash": []
   },
+  "sources": [string, ...],  // 1–5 strings: titles/URLs of source documents or references cited. If none identifiable in the content, use a single generic entry like "Provided course material"
   "review_flags": []
 }
 
@@ -210,6 +211,10 @@ SCREEN TYPES (use all five types, distributed across the module):
   ],
   "accessibility": { "alt_text": string }
 }
+
+STRUCTURE RULES:
+- The final screen in the "screens" array MUST be a "text" type screen that serves as the course conclusion. Its title should be "Conclusion" or equivalent, and its body should summarise the key takeaways from the module.
+- Do not place question screens after the conclusion screen.
 
 VALIDATION RULES:
 - All screen IDs must be unique
