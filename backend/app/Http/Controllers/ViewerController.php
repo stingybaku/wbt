@@ -38,6 +38,7 @@ class ViewerController extends Controller
                 'current_screen_index' => $progress->current_screen_index,
                 'total_screens'        => $progress->total_screens,
                 'completed_at'         => $progress->completed_at?->toIso8601String(),
+                'question_answers'     => $progress->question_answers ?? [],
             ] : null,
         ]);
     }
@@ -84,6 +85,7 @@ class ViewerController extends Controller
         $data = $request->validate([
             'current_screen_index' => 'required|integer|min:0',
             'total_screens'        => 'required|integer|min:1',
+            'question_answers'     => 'sometimes|array',
         ]);
 
         $isComplete = $data['current_screen_index'] >= $data['total_screens'] - 1;
@@ -92,17 +94,20 @@ class ViewerController extends Controller
             ->whereNotNull('completed_at')
             ->exists();
 
-        InviteProgress::updateOrCreate(
-            ['invite_id' => $invite->id],
-            [
-                'current_screen_index' => $data['current_screen_index'],
-                'total_screens'        => $data['total_screens'],
-                'last_active_at'       => now(),
-                'completed_at'         => $isComplete
-                    ? (InviteProgress::where('invite_id', $invite->id)->value('completed_at') ?? now())
-                    : null,
-            ]
-        );
+        $update = [
+            'current_screen_index' => $data['current_screen_index'],
+            'total_screens'        => $data['total_screens'],
+            'last_active_at'       => now(),
+            'completed_at'         => $isComplete
+                ? (InviteProgress::where('invite_id', $invite->id)->value('completed_at') ?? now())
+                : null,
+        ];
+
+        if (array_key_exists('question_answers', $data)) {
+            $update['question_answers'] = $data['question_answers'];
+        }
+
+        InviteProgress::updateOrCreate(['invite_id' => $invite->id], $update);
 
         if ($isComplete && !$alreadyCompleted) {
             \App\Jobs\GenerateCertificateJob::dispatch($invite->id);

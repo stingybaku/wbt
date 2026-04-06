@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchViewerModule, updateViewerProgress, verifyViewer } from '../lib/api';
+import type { ViewerQuestionAnswer } from '../lib/api';
 import { WBTPlayer } from './WBTPlayer';
 import type { Module } from '../lib/moduleSchema';
 
@@ -10,7 +11,7 @@ const STORAGE_NAME_KEY = (token: string) => `viewer_name_${token}`;
 type ViewerState =
   | { phase: 'gate' }
   | { phase: 'loading' }
-  | { phase: 'ready'; module: Module; projectTitle: string; initialScreenIndex: number }
+  | { phase: 'ready'; module: Module; projectTitle: string; initialScreenIndex: number; initialAnswers: Record<string, ViewerQuestionAnswer> }
   | { phase: 'error'; message: string };
 
 export function ViewerPlayerPage() {
@@ -20,6 +21,10 @@ export function ViewerPlayerPage() {
   const [name, setName] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [gateError, setGateError] = useState<string | null>(null);
+
+  // Track accumulated question answers and current screen index for DB sync
+  const answersRef = useRef<Record<string, ViewerQuestionAnswer>>({});
+  const screenRef = useRef<{ index: number; total: number }>({ index: 0, total: 0 });
 
   // On mount: if this token was already verified in localStorage, skip the gate
   useEffect(() => {
@@ -39,11 +44,16 @@ export function ViewerPlayerPage() {
       const savedIndex = res.progress?.current_screen_index ?? 0;
       // If the viewer completed the course, start from the beginning
       const initialScreenIndex = res.progress?.completed_at ? 0 : savedIndex;
+      const initialAnswers = res.progress?.question_answers ?? {};
+      // Seed refs so first sync has correct values
+      answersRef.current = initialAnswers;
+      screenRef.current = { index: initialScreenIndex, total: res.module.screens.length };
       setState({
         phase: 'ready',
         module: res.module,
         projectTitle: res.project_title,
         initialScreenIndex,
+        initialAnswers,
       });
     } catch (err: unknown) {
       setState({ phase: 'error', message: err instanceof Error ? err.message : 'Failed to load course.' });
@@ -67,9 +77,23 @@ export function ViewerPlayerPage() {
     }
   }
 
-  function handleScreenChange(index: number, total: number) {
+  function syncProgress(index: number, total: number) {
     if (!token) return;
-    updateViewerProgress(token, { current_screen_index: index, total_screens: total }).catch(() => {});
+    updateViewerProgress(token, {
+      current_screen_index: index,
+      total_screens: total,
+      question_answers: answersRef.current,
+    }).catch(() => {});
+  }
+
+  function handleScreenChange(index: number, total: number) {
+    screenRef.current = { index, total };
+    syncProgress(index, total);
+  }
+
+  function handleAnswered(screenId: string, answer: ViewerQuestionAnswer) {
+    answersRef.current = { ...answersRef.current, [screenId]: answer };
+    syncProgress(screenRef.current.index, screenRef.current.total);
   }
 
   if (state.phase === 'gate') {
@@ -133,7 +157,9 @@ export function ViewerPlayerPage() {
       projectTitle={state.projectTitle}
       viewerMode
       initialScreenIndex={state.initialScreenIndex}
+      initialAnswers={state.initialAnswers}
       onScreenChange={handleScreenChange}
+      onAnswered={handleAnswered}
     />
   );
 }

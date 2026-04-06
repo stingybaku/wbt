@@ -157,11 +157,18 @@ export function revokeInvite(token: string, projectId: string, inviteId: string)
   return request(`/projects/${projectId}/invites/${inviteId}`, { method: 'DELETE', token });
 }
 
+export type ViewerQuestionAnswer = { selected: string[]; submitted: boolean; isCorrect: boolean };
+
 export function fetchViewerModule(viewerToken: string): Promise<{
   project_title: string;
   module: import('./moduleSchema').Module;
   expires_at: string;
-  progress: { current_screen_index: number; total_screens: number; completed_at: string | null } | null;
+  progress: {
+    current_screen_index: number;
+    total_screens: number;
+    completed_at: string | null;
+    question_answers: Record<string, ViewerQuestionAnswer>;
+  } | null;
 }> {
   return request(`/view/${viewerToken}`);
 }
@@ -189,7 +196,11 @@ export async function downloadCertificate(token: string, projectId: string, invi
 
 export function updateViewerProgress(
   viewerToken: string,
-  payload: { current_screen_index: number; total_screens: number }
+  payload: {
+    current_screen_index: number;
+    total_screens: number;
+    question_answers?: Record<string, ViewerQuestionAnswer>;
+  }
 ): Promise<{ ok: boolean }> {
   return request(`/view/${viewerToken}/progress`, { method: 'POST', body: payload });
 }

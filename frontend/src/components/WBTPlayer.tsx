@@ -139,6 +139,31 @@ export function WBTPlayerPage() {
   );
 }
 
+// ─── Progress persistence ─────────────────────────────────────────────────────
+
+type QuestionAnswer = { selected: string[]; submitted: boolean; isCorrect: boolean };
+
+type SavedProgress = {
+  screenIndex: number;
+  visited: number[];
+  answers: Record<string, QuestionAnswer>;
+};
+
+function progressKey(projectId: string) { return `wbt_progress_${projectId}`; }
+
+function loadProgress(projectId: string): SavedProgress | null {
+  if (!projectId) return null; // viewer mode — DB handles resume
+  try {
+    const raw = localStorage.getItem(progressKey(projectId));
+    return raw ? (JSON.parse(raw) as SavedProgress) : null;
+  } catch { return null; }
+}
+
+function saveProgress(projectId: string, data: SavedProgress) {
+  if (!projectId) return; // viewer mode — DB handles resume
+  try { localStorage.setItem(progressKey(projectId), JSON.stringify(data)); } catch { /* ignore */ }
+}
+
 // ─── Player ───────────────────────────────────────────────────────────────────
 
 type PlayerPhase = 'cover' | 'training' | 'complete';
@@ -149,26 +174,56 @@ export function WBTPlayer({
   projectTitle,
   viewerMode = false,
   initialScreenIndex = 0,
+  initialAnswers,
   onScreenChange,
+  onAnswered,
 }: {
   module: Module;
   projectId: string;
   projectTitle?: string;
   viewerMode?: boolean;
   initialScreenIndex?: number;
+  initialAnswers?: Record<string, QuestionAnswer>;
   onScreenChange?: (index: number, total: number) => void;
+  onAnswered?: (screenId: string, answer: QuestionAnswer) => void;
 }) {
-  const [phase, setPhase] = useState<PlayerPhase>(initialScreenIndex > 0 ? 'training' : 'cover');
-  const [screenIndex, setScreenIndex] = useState(initialScreenIndex);
-
   const screens = module.screens;
+
+  // ── Restore from localStorage on first mount ──
+  const saved = useMemo(() => loadProgress(projectId), [projectId]);
+
+  const [phase, setPhase] = useState<PlayerPhase>(() =>
+    (saved?.screenIndex ?? initialScreenIndex) > 0 ? 'training' : 'cover'
+  );
+  const [screenIndex, setScreenIndex] = useState(() => saved?.screenIndex ?? initialScreenIndex);
+  const [visitedSet, setVisitedSet] = useState<Set<number>>(() => {
+    const idx = saved?.screenIndex ?? initialScreenIndex;
+    return new Set<number>([idx, ...(saved?.visited ?? [])]);
+  });
+  const [questionAnswers, setQuestionAnswers] = useState<Record<string, QuestionAnswer>>(
+    () => saved?.answers ?? initialAnswers ?? {}
+  );
+
   const currentScreen = screens[screenIndex];
+
+  // ── Persist whenever progress changes ──
+  useEffect(() => {
+    saveProgress(projectId, {
+      screenIndex,
+      visited: [...visitedSet],
+      answers: questionAnswers,
+    });
+  }, [projectId, screenIndex, visitedSet, questionAnswers]);
+
+  function goTo(index: number) {
+    setScreenIndex(index);
+    setVisitedSet(prev => new Set(prev).add(index));
+    onScreenChange?.(index, screens.length);
+  }
 
   function goNext() {
     if (screenIndex < screens.length - 1) {
-      const next = screenIndex + 1;
-      setScreenIndex(next);
-      onScreenChange?.(next, screens.length);
+      goTo(screenIndex + 1);
     } else {
       setPhase('complete');
       onScreenChange?.(screens.length - 1, screens.length);
@@ -176,16 +231,14 @@ export function WBTPlayer({
   }
 
   function goPrev() {
-    if (screenIndex > 0) {
-      const prev = screenIndex - 1;
-      setScreenIndex(prev);
-      onScreenChange?.(prev, screens.length);
-    }
+    if (screenIndex > 0) goTo(screenIndex - 1);
   }
 
-  function jumpTo(index: number) {
-    setScreenIndex(index);
-    onScreenChange?.(index, screens.length);
+  function jumpTo(index: number) { goTo(index); }
+
+  function handleAnswered(screenId: string, answer: QuestionAnswer) {
+    setQuestionAnswers(prev => ({ ...prev, [screenId]: answer }));
+    onAnswered?.(screenId, answer);
   }
 
   if (phase === 'cover') {
@@ -194,7 +247,7 @@ export function WBTPlayer({
         module={module}
         projectId={projectId}
         viewerMode={viewerMode}
-        onStart={() => setPhase('training')}
+        onStart={() => { setPhase('training'); goTo(screenIndex); }}
       />
     );
   }
@@ -228,13 +281,15 @@ export function WBTPlayer({
         </div>
       </div>
 
-      <PlayerScreenNav screens={screens} currentIndex={screenIndex} onJump={jumpTo} />
+      <PlayerScreenNav screens={screens} currentIndex={screenIndex} visitedSet={visitedSet} onJump={jumpTo} />
 
       <ScreenRenderer
         key={currentScreen.id}
         screen={currentScreen}
         screenIndex={screenIndex}
         totalScreens={screens.length}
+        questionAnswer={questionAnswers[currentScreen.id]}
+        onAnswered={handleAnswered}
         onNext={goNext}
         onPrev={goPrev}
         attribution={module.attribution}
@@ -245,17 +300,18 @@ export function WBTPlayer({
 
 // ─── Floating screen nav ──────────────────────────────────────────────────────
 
-function PlayerScreenNav({ screens, currentIndex, onJump }: {
+function PlayerScreenNav({ screens, currentIndex, visitedSet, onJump }: {
   screens: Screen[];
   currentIndex: number;
+  visitedSet: Set<number>;
   onJump: (index: number) => void;
 }) {
   return (
     <nav className="player-sidenav" aria-label="Course screens">
       {screens.map((screen, i) => {
         const isActive  = i === currentIndex;
-        const isVisited = i < currentIndex;
-        const canJump   = isActive || isVisited;
+        const isVisited = visitedSet.has(i) && !isActive;
+        const canJump   = visitedSet.has(i);
         return (
           <button
             key={screen.id}
@@ -338,6 +394,8 @@ function ScreenRenderer({
   screen,
   screenIndex,
   totalScreens,
+  questionAnswer,
+  onAnswered,
   onNext,
   onPrev,
   attribution,
@@ -345,11 +403,15 @@ function ScreenRenderer({
   screen: Screen;
   screenIndex: number;
   totalScreens: number;
+  questionAnswer?: QuestionAnswer;
+  onAnswered: (screenId: string, answer: QuestionAnswer) => void;
   onNext: () => void;
   onPrev: () => void;
   attribution: Module['attribution'];
 }) {
-  const [questionReady, setQuestionReady] = useState(screen.type !== 'question');
+  // Question is "ready" (Next unlocked) once it's been submitted — either
+  // just now or restored from a previous visit.
+  const questionReady = screen.type !== 'question' || (questionAnswer?.submitted ?? false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const heroDir = useMemo(randomDir, []);
   const contentDir = useMemo(randomDir, []);
@@ -408,7 +470,11 @@ function ScreenRenderer({
           {screen.type === 'accordion' && <AccordionScreen screen={screen} />}
           {screen.type === 'click_reveal' && <ClickRevealScreen screen={screen} />}
           {screen.type === 'question' && (
-            <QuestionScreen screen={screen} onReady={() => setQuestionReady(true)} />
+            <QuestionScreen
+              screen={screen}
+              savedAnswer={questionAnswer}
+              onAnswered={answer => onAnswered(screen.id, answer)}
+            />
           )}
         </article>
       </main>
@@ -643,15 +709,19 @@ type ChoiceInteraction = Extract<Interaction, { kind: 'single_choice' | 'multi_c
 
 function QuestionScreen({
   screen,
-  onReady,
+  savedAnswer,
+  onAnswered,
 }: {
   screen: Screen;
-  onReady: () => void;
+  savedAnswer?: QuestionAnswer;
+  onAnswered: (answer: QuestionAnswer) => void;
 }) {
   const interaction = screen.interactions[0] as ChoiceInteraction | undefined;
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [submitted, setSubmitted] = useState(false);
-  const [isCorrect, setIsCorrect] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(savedAnswer?.selected ?? [])
+  );
+  const [submitted, setSubmitted] = useState(() => savedAnswer?.submitted ?? false);
+  const [isCorrect, setIsCorrect] = useState(() => savedAnswer?.isCorrect ?? false);
   const feedbackRef = useRef<HTMLDivElement>(null);
 
   if (!interaction) return <RichText text={screen.body} />;
@@ -677,7 +747,7 @@ function QuestionScreen({
       [...selected].every(id => correctIds.has(id));
     setIsCorrect(correct);
     setSubmitted(true);
-    onReady();
+    onAnswered({ selected: [...selected], submitted: true, isCorrect: correct });
     // Move focus to feedback for screen readers
     setTimeout(() => feedbackRef.current?.focus(), 50);
   }
