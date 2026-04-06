@@ -662,12 +662,23 @@ function QuestionScreen({
 // ─── Completion screen ────────────────────────────────────────────────────────
 
 function CompletionScreen({ module, projectId, viewerMode }: { module: Module; projectId: string; viewerMode: boolean }) {
+  const sources = module.sources && module.sources.length > 0 ? module.sources : null;
   return (
     <div className="player-shell player-cover">
       <div className="player-cover-card player-complete-card">
         <div className="player-complete-icon" aria-hidden="true">✓</div>
         <h1 className="player-cover-title">Training complete</h1>
         <p className="player-complete-subtitle">{module.meta.title}</p>
+        {sources && (
+          <div className="player-sources">
+            <h3 className="player-sources-heading">Sources</h3>
+            <ul className="player-sources-list">
+              {sources.map((src, i) => (
+                <li key={i} className="player-sources-item">{src}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         {!viewerMode && (
           <div className="player-cover-actions">
             <Link to={`/projects/${projectId}`}>
