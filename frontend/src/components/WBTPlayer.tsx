@@ -75,11 +75,22 @@ function RichText({ text, className }: { text: string; className?: string }) {
     } else {
       flushOl();
       flushUl();
-      nodes.push(
-        <p key={nodes.length} className={className ?? 'player-body'}>
-          <RichInline text={line} />
-        </p>
-      );
+      const calloutMatch = line.match(/^(IMPORTANT|NOTE|WARNING|TIP|CAUTION|REMINDER):\s*(.*)/i);
+      if (calloutMatch) {
+        const kind = calloutMatch[1].toUpperCase();
+        nodes.push(
+          <div key={nodes.length} className={`player-callout player-callout--${kind.toLowerCase()}`} role="note">
+            <span className="player-callout-label">{kind}</span>
+            <span className="player-callout-body"><RichInline text={calloutMatch[2]} /></span>
+          </div>
+        );
+      } else {
+        nodes.push(
+          <p key={nodes.length} className={className ?? 'player-body'}>
+            <RichInline text={line} />
+          </p>
+        );
+      }
     }
   }
   flushOl();
@@ -903,24 +914,25 @@ function FlashcardScreen({ screen }: { screen: Screen }) {
         {interaction.cards.map((card, i) => {
           const isFlipped = flipped.has(i);
           return (
-            <button
-              key={i}
-              type="button"
-              className={`player-flashcard${isFlipped ? ' player-flashcard--flipped' : ''}`}
-              onClick={() => toggle(i)}
-              aria-label={isFlipped ? `Back: ${card.back}` : `Front: ${card.front}. Click to reveal.`}
-            >
-              <div className="player-flashcard-inner" aria-hidden="true">
-                <div className="player-flashcard-face player-flashcard-front">
-                  <span className="player-flashcard-label">Term</span>
-                  <span className="player-flashcard-text">{card.front}</span>
+            <div key={i} className={`player-flashcard-wrap${isFlipped ? ' player-flashcard-wrap--flipped' : ''}`}>
+              <button
+                type="button"
+                className="player-flashcard"
+                onClick={() => toggle(i)}
+                aria-label={isFlipped ? `Definition: ${card.back}` : `Term: ${card.front}. Click to flip.`}
+              >
+                <div className="player-flashcard-inner" aria-hidden="true">
+                  <div className="player-flashcard-face player-flashcard-front">
+                    <span className="player-flashcard-label">Term</span>
+                    <span className="player-flashcard-text">{card.front}</span>
+                  </div>
+                  <div className="player-flashcard-face player-flashcard-back">
+                    <span className="player-flashcard-label">Definition</span>
+                    <span className="player-flashcard-text">{card.back || '—'}</span>
+                  </div>
                 </div>
-                <div className="player-flashcard-face player-flashcard-back">
-                  <span className="player-flashcard-label">Definition</span>
-                  <span className="player-flashcard-text">{card.back}</span>
-                </div>
-              </div>
-            </button>
+              </button>
+            </div>
           );
         })}
       </div>
