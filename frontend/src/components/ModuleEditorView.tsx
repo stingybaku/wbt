@@ -231,6 +231,9 @@ const SCREEN_TYPE_LABELS: Record<Screen['type'], string> = {
   accordion:    'Accordion',
   click_reveal: 'Click Reveal',
   question:     'Question',
+  tabs:         'Tabs',
+  process:      'Process',
+  flashcard:    'Flashcard',
 };
 
 function MetaEditor({ draft, onUpdate, token }: {
@@ -341,6 +344,9 @@ function ScreenEditor({ screen, screenIndex, allFlags, onUpdate, token }: {
     screen.type === 'question' &&
     interaction0 &&
     (interaction0.kind === 'single_choice' || interaction0.kind === 'multi_choice');
+  const hasTabsInteraction = screen.type === 'tabs' && interaction0?.kind === 'tabs';
+  const hasProcessInteraction = screen.type === 'process' && interaction0?.kind === 'process';
+  const hasFlashcardInteraction = screen.type === 'flashcard' && interaction0?.kind === 'flashcard';
 
   const openFlags = screenFlags.filter(f => f.flag.status === 'open');
 
@@ -411,6 +417,41 @@ function ScreenEditor({ screen, screenIndex, allFlags, onUpdate, token }: {
           interaction={interaction0 as Extract<Interaction, { kind: 'single_choice' | 'multi_choice' }>}
           onUpdate={updated => updateScreen(s => { s.interactions[0] = updated; })}
         />
+      )}
+
+      {hasTabsInteraction && (
+        <EditorCard label="Tabs" icon="⊟">
+          <ItemsEditor
+            items={(interaction0 as { kind: string; items: RevealItem[] }).items}
+            showImages={false}
+            onUpdate={items => updateScreen(s => {
+              (s.interactions[0] as { kind: string; items: RevealItem[] }).items = items;
+            })}
+          />
+        </EditorCard>
+      )}
+
+      {hasProcessInteraction && (
+        <EditorCard label="Steps" icon="⊟">
+          <ItemsEditor
+            items={(interaction0 as { kind: string; items: RevealItem[] }).items}
+            showImages={false}
+            onUpdate={items => updateScreen(s => {
+              (s.interactions[0] as { kind: string; items: RevealItem[] }).items = items;
+            })}
+          />
+        </EditorCard>
+      )}
+
+      {hasFlashcardInteraction && (
+        <EditorCard label="Flashcards" icon="⊟">
+          <FlashcardsEditor
+            cards={(interaction0 as { kind: string; cards: { front: string; back: string }[] }).cards}
+            onUpdate={cards => updateScreen(s => {
+              (s.interactions[0] as { kind: string; cards: { front: string; back: string }[] }).cards = cards;
+            })}
+          />
+        </EditorCard>
       )}
 
       <EditorCard label="Review flags" icon="⚑" accent={openFlags.length > 0 ? 'danger' : undefined}>
@@ -528,6 +569,35 @@ function ItemsEditor({ items, showImages = false, token, onUpdate }: {
                 />
               </div>
             )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Flashcards editor ────────────────────────────────────────────────────────
+
+function FlashcardsEditor({ cards, onUpdate }: {
+  cards: { front: string; back: string }[];
+  onUpdate: (cards: { front: string; back: string }[]) => void;
+}) {
+  return (
+    <div className="items-editor">
+      {cards.map((card, i) => (
+        <div key={i} className="item-card">
+          <div className="item-card-header"><span>Card {i + 1}</span></div>
+          <div className="item-card-body">
+            <div className="field-group">
+              <label htmlFor={`card-front-${i}`}>Front (term)</label>
+              <input id={`card-front-${i}`} value={card.front}
+                onChange={e => { const v = e.target.value; onUpdate(cards.map((c, j) => j === i ? { ...c, front: v } : c)); }} />
+            </div>
+            <div className="field-group">
+              <label htmlFor={`card-back-${i}`}>Back (definition)</label>
+              <textarea id={`card-back-${i}`} rows={3} value={card.back}
+                onChange={e => { const v = e.target.value; onUpdate(cards.map((c, j) => j === i ? { ...c, back: v } : c)); }} />
+            </div>
           </div>
         </div>
       ))}

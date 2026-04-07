@@ -398,6 +398,9 @@ const screenTypeLabel: Record<Screen['type'], string> = {
   accordion:    'Explore',
   click_reveal: 'Discover',
   question:     'Knowledge Check',
+  tabs:         'Navigate',
+  process:      'Follow',
+  flashcard:    'Recall',
 };
 
 // ─── Screen renderer ──────────────────────────────────────────────────────────
@@ -488,6 +491,9 @@ function ScreenRenderer({
               onAnswered={answer => onAnswered(screen.id, answer)}
             />
           )}
+          {screen.type === 'tabs' && <TabsScreen screen={screen} />}
+          {screen.type === 'process' && <ProcessScreen screen={screen} />}
+          {screen.type === 'flashcard' && <FlashcardScreen screen={screen} />}
         </article>
       </main>
 
@@ -812,6 +818,113 @@ function QuestionScreen({
           {isCorrect ? interaction.feedback.correct : interaction.feedback.incorrect}
         </div>
       )}
+    </>
+  );
+}
+
+// ─── Tabs screen ─────────────────────────────────────────────────────────────
+
+function TabsScreen({ screen }: { screen: Screen }) {
+  const [active, setActive] = useState(0);
+
+  const interaction = screen.interactions[0];
+  if (!interaction || interaction.kind !== 'tabs') return <RichText text={screen.body} />;
+
+  return (
+    <>
+      {screen.body && <RichText text={screen.body} />}
+      <div className="player-tabs">
+        <div className="player-tabs-bar" role="tablist">
+          {interaction.items.map((item, i) => (
+            <button
+              key={i}
+              type="button"
+              role="tab"
+              aria-selected={i === active}
+              className={`player-tab-btn${i === active ? ' active' : ''}`}
+              onClick={() => setActive(i)}
+            >
+              {item.title}
+            </button>
+          ))}
+        </div>
+        <div className="player-tab-panel" role="tabpanel">
+          <RichText text={interaction.items[active].body} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Process screen ───────────────────────────────────────────────────────────
+
+function ProcessScreen({ screen }: { screen: Screen }) {
+  const interaction = screen.interactions[0];
+  if (!interaction || interaction.kind !== 'process') return <RichText text={screen.body} />;
+
+  return (
+    <>
+      {screen.body && <RichText text={screen.body} />}
+      <ol className="player-process">
+        {interaction.items.map((step, i) => (
+          <li key={i} className="player-process-step">
+            <div className="player-process-step-num" aria-hidden="true">{i + 1}</div>
+            <div className="player-process-step-content">
+              <strong className="player-process-step-title">{step.title}</strong>
+              {step.body && <RichText text={step.body} className="player-process-step-body" />}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </>
+  );
+}
+
+// ─── Flashcard screen ─────────────────────────────────────────────────────────
+
+function FlashcardScreen({ screen }: { screen: Screen }) {
+  const [flipped, setFlipped] = useState<Set<number>>(new Set());
+
+  const interaction = screen.interactions[0];
+  if (!interaction || interaction.kind !== 'flashcard') return <RichText text={screen.body} />;
+
+  function toggle(i: number) {
+    setFlipped(prev => {
+      const next = new Set(prev);
+      next.has(i) ? next.delete(i) : next.add(i);
+      return next;
+    });
+  }
+
+  return (
+    <>
+      {screen.body && <RichText text={screen.body} />}
+      <div className="player-flashcard-grid">
+        {interaction.cards.map((card, i) => {
+          const isFlipped = flipped.has(i);
+          return (
+            <button
+              key={i}
+              type="button"
+              className={`player-flashcard${isFlipped ? ' player-flashcard--flipped' : ''}`}
+              onClick={() => toggle(i)}
+              aria-label={isFlipped ? `Back: ${card.back}` : `Front: ${card.front}. Click to reveal.`}
+            >
+              <div className="player-flashcard-inner" aria-hidden="true">
+                <div className="player-flashcard-face player-flashcard-front">
+                  <span className="player-flashcard-label">Term</span>
+                  <span className="player-flashcard-text">{card.front}</span>
+                </div>
+                <div className="player-flashcard-face player-flashcard-back">
+                  <span className="player-flashcard-label">Definition</span>
+                  <span className="player-flashcard-text">{card.back}</span>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      <p className="player-flashcard-hint muted">Click any card to flip it</p>
     </>
   );
 }
