@@ -81,9 +81,15 @@ class GenerationJob implements ShouldQueue
      * Returns an array with keys: url, alt_text, source, external_id, photographer, license
      * Returns null if all sources are exhausted or produce duplicates.
      */
-    private function fetchImage(string $query, array &$usedUrls): ?array
+    private function fetchImage(string $query, array &$usedUrls, ?string $fallbackQuery = null): ?array
     {
         $refined = $this->refineImageQuery($query);
+
+        // If refinement reduced the title to a single vague word (signalled by the
+        // " concept" grounding suffix), substitute the module-level topic instead.
+        if ($fallbackQuery && str_ends_with($refined, ' concept')) {
+            $refined = $fallbackQuery;
+        }
 
         // 1. Check the semantic/keyword cache — skip if URL already used in this module
         $hit = $this->cache->find($refined);
@@ -160,6 +166,35 @@ class GenerationJob implements ShouldQueue
         }
 
         return null;
+    }
+
+    /**
+     * Derive a concise topic string from the module metadata for use as a fallback
+     * image query when individual screen titles are too generic (e.g. "Welcome").
+     *
+     * Tries meta.title first; if that also reduces to a vague single word, falls
+     * back to the first sentence of meta.source_summary.
+     */
+    private function extractModuleTopic(array $meta): string
+    {
+        $refined = $this->refineImageQuery($meta['title'] ?? '');
+
+        // Title was too generic — try the source summary instead
+        if (str_ends_with($refined, ' concept')) {
+            $summary = trim($meta['source_summary'] ?? '');
+            if ($summary) {
+                $firstSentence = trim(explode('.', $summary)[0]);
+                $refined = $this->refineImageQuery($firstSentence);
+            }
+        }
+
+        // Strip the " concept" grounding suffix — it's appended for standalone
+        // queries but here we return just the bare topic words.
+        if (str_ends_with($refined, ' concept')) {
+            $refined = substr($refined, 0, -strlen(' concept'));
+        }
+
+        return trim($refined);
     }
 
     /**
@@ -282,6 +317,10 @@ class GenerationJob implements ShouldQueue
         // Images can still be reused across different courses via the cache.
         $usedUrls = [];
 
+        // Module-level topic used as a fallback when a screen title is too generic
+        // (e.g. "Welcome", "Conclusion") to produce a meaningful image query.
+        $moduleTopic = $this->extractModuleTopic($moduleJson['meta'] ?? []);
+
         // Initialize attribution buckets for both sources
         if (!isset($moduleJson['attribution']['unsplash'])) {
             $moduleJson['attribution']['unsplash'] = [];
@@ -306,7 +345,7 @@ class GenerationJob implements ShouldQueue
 
             $attempted++;
             try {
-                $result = $this->fetchImage($query, $usedUrls);
+                $result = $this->fetchImage($query, $usedUrls, $moduleTopic ?: null);
 
                 if (!$result) {
                     $skippedNoResults++;
@@ -351,7 +390,7 @@ class GenerationJob implements ShouldQueue
 
                     $attempted++;
                     try {
-                        $result = $this->fetchImage($query, $usedUrls);
+                        $result = $this->fetchImage($query, $usedUrls, $moduleTopic ?: null);
 
                         if (!$result) {
                             $skippedNoResults++;
