@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Mail\CertificateMail;
 use App\Models\InviteProgress;
+use App\Notifications\ViewerCompletedNotification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -42,5 +43,7 @@ class GenerateCertificateJob implements ShouldQueue
         $progress->update(['certificate_path' => $filename]);
 
         Mail::to($progress->invite->email)->send(new CertificateMail($progress));
+
+        $progress->invite->invitedBy->notify(new ViewerCompletedNotification($progress));
     }
 }

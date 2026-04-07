@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { fetchProject, fetchModule, generateModule, fetchInvites, createInvite, revokeInvite, downloadCertificate, fetchProjectReport } from '../lib/api';
 import type { ProjectReport } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,7 @@ const MAX_INVITES = 10;
 
 export function ProjectDetailView() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { token } = useAuth();
 
   const [project, setProject] = useState<Project | null>(null);
@@ -18,7 +19,14 @@ export function ProjectDetailView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'report'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'report'>(
+    searchParams.get('tab') === 'report' ? 'report' : 'overview'
+  );
+
+  function switchTab(tab: 'overview' | 'report') {
+    setActiveTab(tab);
+    setSearchParams(tab === 'overview' ? {} : { tab });
+  }
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -194,14 +202,14 @@ export function ProjectDetailView() {
           <button
             type="button"
             className={`detail-tab${activeTab === 'overview' ? ' detail-tab--active' : ''}`}
-            onClick={() => setActiveTab('overview')}
+            onClick={() => switchTab('overview')}
           >
             Overview
           </button>
           <button
             type="button"
             className={`detail-tab${activeTab === 'report' ? ' detail-tab--active' : ''}`}
-            onClick={() => setActiveTab('report')}
+            onClick={() => switchTab('report')}
           >
             Report
           </button>
