@@ -212,6 +212,9 @@ class GenerationJob implements ShouldQueue
             'general', 'common', 'main', 'major', 'various', 'different',
             'important', 'critical', 'significant', 'relevant', 'applicable',
             'training', 'course', 'module', 'lesson', 'section', 'unit', 'topic',
+            // Greeting / structural words that produce generic unrelated stock photos
+            'welcome', 'hello', 'greetings', 'intro',
+            'conclusion', 'conclusions', 'summary', 'summaries', 'recap', 'closing',
         ];
 
         $words    = preg_split('/\s+/', $lower);
