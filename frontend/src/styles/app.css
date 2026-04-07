@@ -1931,6 +1931,9 @@ input[type="range"]:focus {
 .screen-type-pill--accordion    { color: #34d399; background: rgba(52,  211, 153, 0.1); }
 .screen-type-pill--click_reveal { color: #fbbf24; background: rgba(251, 191,  36, 0.1); }
 .screen-type-pill--question     { color: #f87171; background: rgba(248, 113, 113, 0.1); }
+.screen-type-pill--tabs         { color: #38bdf8; background: rgba(56,  189, 248, 0.1); }
+.screen-type-pill--process      { color: #4ade80; background: rgba(74,  222, 128, 0.1); }
+.screen-type-pill--flashcard    { color: #fb923c; background: rgba(251, 146,  60, 0.1); }
 
 /* ── Editor cards (Filament-style) ───────────────────────────────────────── */
 
@@ -3378,6 +3381,180 @@ input[type="range"]:focus {
 .player-feedback-icon {
   font-weight: 700;
   flex-shrink: 0;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+
+.player-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.player-tabs-bar {
+  display: flex;
+  border-bottom: 2px solid #e8e8e8;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.player-tabs-bar::-webkit-scrollbar { display: none; }
+
+.player-tab-btn {
+  padding: 0.6rem 1.1rem;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  white-space: nowrap;
+  border-radius: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.player-tab-btn:hover { color: #111827; }
+
+.player-tab-btn.active {
+  color: #f43f23;
+  border-bottom-color: #f43f23;
+}
+
+.player-tab-panel {
+  padding: 1.1rem 0 0;
+}
+
+/* ── Process ──────────────────────────────────────────────────────────────── */
+
+.player-process {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.player-process-step {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem 1.1rem;
+  background: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.player-process-step-num {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: #f43f23;
+  color: white;
+  font-weight: 700;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-process-step-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding-top: 0.2rem;
+}
+
+.player-process-step-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.player-process-step-body {
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+/* ── Flashcards ───────────────────────────────────────────────────────────── */
+
+.player-flashcard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.player-flashcard {
+  height: 160px;
+  perspective: 1000px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: left;
+}
+
+.player-flashcard-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-style: preserve-3d;
+}
+
+.player-flashcard--flipped .player-flashcard-inner {
+  transform: rotateY(180deg);
+}
+
+.player-flashcard-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 12px;
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.player-flashcard-front {
+  background: white;
+  border: 1px solid #e8e8e8;
+}
+
+.player-flashcard-back {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  transform: rotateY(180deg);
+}
+
+.player-flashcard-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.55;
+}
+
+.player-flashcard-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.5;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+
+.player-flashcard-hint {
+  text-align: center;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
 }
 
 /* ── Screen sidenav ───────────────────────────────────────────────────────── */

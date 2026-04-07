@@ -37,6 +37,18 @@ const interactionSchema = z.discriminatedUnion('kind', [
       image: z.object({ url: z.string().url(), alt_text: z.string() }).nullable().optional(),
     })).min(2),
   }),
+  z.object({
+    kind: z.literal('tabs'),
+    items: z.array(z.object({ title: z.string(), body: z.string() })).min(2),
+  }),
+  z.object({
+    kind: z.literal('process'),
+    items: z.array(z.object({ title: z.string(), body: z.string() })).min(2),
+  }),
+  z.object({
+    kind: z.literal('flashcard'),
+    cards: z.array(z.object({ front: z.string(), back: z.string() })).min(2),
+  }),
 ]);
 
 export const imageTextLayouts = ['top', 'bottom', 'left', 'right'] as const;
@@ -44,7 +56,7 @@ export type ImageTextLayout = typeof imageTextLayouts[number];
 
 const screenSchema = z.object({
   id: z.string(),
-  type: z.enum(['text', 'image_text', 'accordion', 'click_reveal', 'question']),
+  type: z.enum(['text', 'image_text', 'accordion', 'click_reveal', 'question', 'tabs', 'process', 'flashcard']),
   title: z.string(),
   body: z.string(),
   image: z
@@ -132,6 +144,13 @@ export const moduleSchema = z
           code: z.ZodIssueCode.custom,
           message: 'image_text screens must include an image object',
           path: ['screens', i, 'image'],
+        });
+      }
+      if ((screen.type === 'tabs' || screen.type === 'process' || screen.type === 'flashcard') && screen.interactions.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${screen.type} screens must include at least 1 interaction`,
+          path: ['screens', i, 'interactions'],
         });
       }
     });

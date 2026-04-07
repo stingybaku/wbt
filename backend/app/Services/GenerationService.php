@@ -125,7 +125,7 @@ REQUIRED JSON SCHEMA:
 
 IMPORTANT IMAGE RULE: Every screen of every type MUST include an image object. Never use null for the image field. Always set image to { "url": "https://placeholder.wbtforge.dev/800x450", "alt_text": string } with a descriptive alt_text relevant to the screen content.
 
-SCREEN TYPES (use all five types, distributed across the module):
+SCREEN TYPES (use a variety of types distributed across the module — prefer variety over repetition, but you do not need to use every type):
 
 1. text screen:
 {
@@ -212,6 +212,63 @@ SCREEN TYPES (use all five types, distributed across the module):
   "accessibility": { "alt_text": string }
 }
 
+6. tabs screen — parallel topics shown in horizontal tabs (MUST have at least 1 interaction with at least 2 items):
+{
+  "id": "scr_006",
+  "type": "tabs",
+  "title": string,
+  "body": string,
+  "image": { "url": "https://placeholder.wbtforge.dev/800x450", "alt_text": string },
+  "interactions": [
+    {
+      "kind": "tabs",
+      "items": [
+        { "title": string, "body": string },
+        { "title": string, "body": string }
+      ]
+    }
+  ],
+  "accessibility": { "alt_text": string }
+}
+
+7. process screen — numbered sequential steps for a procedure or workflow (MUST have at least 1 interaction with at least 2 items):
+{
+  "id": "scr_007",
+  "type": "process",
+  "title": string,
+  "body": string,
+  "image": { "url": "https://placeholder.wbtforge.dev/800x450", "alt_text": string },
+  "interactions": [
+    {
+      "kind": "process",
+      "items": [
+        { "title": string, "body": string },
+        { "title": string, "body": string }
+      ]
+    }
+  ],
+  "accessibility": { "alt_text": string }
+}
+
+8. flashcard screen — flip cards for terms and definitions (MUST have at least 1 interaction with at least 2 cards):
+{
+  "id": "scr_008",
+  "type": "flashcard",
+  "title": string,
+  "body": string,
+  "image": { "url": "https://placeholder.wbtforge.dev/800x450", "alt_text": string },
+  "interactions": [
+    {
+      "kind": "flashcard",
+      "cards": [
+        { "front": string, "back": string },
+        { "front": string, "back": string }
+      ]
+    }
+  ],
+  "accessibility": { "alt_text": string }
+}
+
 STRUCTURE RULES:
 - The final screen in the "screens" array MUST be a "text" type screen that serves as the course conclusion. Its title should be "Conclusion" or equivalent, and its body should summarise the key takeaways from the module.
 - Do not place question screens after the conclusion screen.
@@ -220,8 +277,9 @@ VALIDATION RULES:
 - All screen IDs must be unique
 - Minimum 10 screens total
 - Every screen MUST have a non-null image object with a descriptive alt_text
-- question screens MUST include at least 1 interaction
-- accordion and click_reveal interactions MUST have at least 2 items
+- question, tabs, process, and flashcard screens MUST include at least 1 interaction
+- accordion, click_reveal, tabs, and process interactions MUST have at least 2 items
+- flashcard interactions MUST have at least 2 cards
 - single_choice and multi_choice interactions MUST have at least 2 choices
 SYSTEM;
 
@@ -342,8 +400,8 @@ SYSTEM,
         foreach ($screens as $i => $screen) {
             $idx = $i + 1;
 
-            if ($screen['type'] === 'question' && empty($screen['interactions'])) {
-                throw new \RuntimeException("Screen {$idx} (question) must have at least 1 interaction");
+            if (in_array($screen['type'], ['question', 'tabs', 'process', 'flashcard']) && empty($screen['interactions'])) {
+                throw new \RuntimeException("Screen {$idx} ({$screen['type']}) must have at least 1 interaction");
             }
 
             if (empty($screen['image'])) {
