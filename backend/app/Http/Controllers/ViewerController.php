@@ -93,17 +93,17 @@ class ViewerController extends Controller
 
         $isComplete = $data['current_screen_index'] >= $data['total_screens'] - 1;
 
-        $alreadyCompleted = InviteProgress::where('invite_id', $invite->id)
-            ->whereNotNull('completed_at')
-            ->exists();
+        $existing         = InviteProgress::where('invite_id', $invite->id)->first();
+        $alreadyCompleted = $existing?->completed_at !== null;
 
         $update = [
             'current_screen_index' => $data['current_screen_index'],
             'total_screens'        => $data['total_screens'],
             'last_active_at'       => now(),
-            'completed_at'         => $isComplete
-                ? (InviteProgress::where('invite_id', $invite->id)->value('completed_at') ?? now())
-                : null,
+            // Never clear a completion — once completed, always completed.
+            'completed_at'         => $alreadyCompleted
+                ? $existing->completed_at
+                : ($isComplete ? now() : null),
         ];
 
         if (array_key_exists('question_answers', $data)) {
