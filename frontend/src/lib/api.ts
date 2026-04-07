@@ -10,6 +10,12 @@ import type { Module } from './moduleSchema';
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api').replace(/\/$/, '');
 
+// Registered by AuthProvider to clear auth state when a 401 is received.
+let unauthorizedHandler: (() => void) | null = null;
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  unauthorizedHandler = handler;
+}
+
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
@@ -26,6 +32,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
+
+  if (response.status === 401) {
+    unauthorizedHandler?.();
+    throw new Error('Session expired. Please log in again.');
+  }
 
   if (!response.ok) {
     const text = await response.text();

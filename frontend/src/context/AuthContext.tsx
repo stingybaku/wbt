@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
-import { logout as apiLogout } from '../lib/api';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { logout as apiLogout, setUnauthorizedHandler } from '../lib/api';
 import type { User } from '../lib/types';
 
 const TOKEN_KEY = 'wbt.auth.token';
@@ -46,6 +46,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     setUser(null);
   }
+
+  // Silently clears auth without calling the logout API (used when the token is
+  // already invalid, e.g. expired on the backend).
+  function expireAuth() {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    setToken(null);
+    setUser(null);
+  }
+
+  useEffect(() => {
+    setUnauthorizedHandler(expireAuth);
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ token, user, setAuth, clearAuth }}>

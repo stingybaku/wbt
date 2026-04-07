@@ -9,12 +9,22 @@ import { CreateProjectWizard } from './components/CreateProjectWizard';
 import { ModuleReviewPage } from './components/ModuleEditorView';
 import { WBTPlayerPage } from './components/WBTPlayer';
 import { ViewerPlayerPage } from './components/ViewerPlayerPage';
+import { useIdleTimeout } from './hooks/useIdleTimeout';
 import { login, fetchProjects } from './lib/api';
 import { useState, useEffect } from 'react';
 import type { Project } from './lib/types';
 
+const IDLE_TIMEOUT_MS = (Number(import.meta.env.VITE_IDLE_TIMEOUT_MINUTES) || 120) * 60 * 1000;
+
 function RequireAuth() {
-  const { token } = useAuth();
+  const { token, clearAuth } = useAuth();
+  const navigate = useNavigate();
+
+  useIdleTimeout(() => {
+    clearAuth();
+    navigate('/login');
+  }, IDLE_TIMEOUT_MS);
+
   if (!token) return <Navigate to="/login" replace />;
   return <Outlet />;
 }
