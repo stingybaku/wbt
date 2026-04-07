@@ -176,6 +176,7 @@ export function WBTPlayer({
   initialScreenIndex = 0,
   initialAnswers,
   initialVisited,
+  completedAt,
   onScreenChange,
   onAnswered,
 }: {
@@ -186,6 +187,7 @@ export function WBTPlayer({
   initialScreenIndex?: number;
   initialAnswers?: Record<string, QuestionAnswer>;
   initialVisited?: number[];
+  completedAt?: string;
   onScreenChange?: (index: number, total: number, visited: number[]) => void;
   onAnswered?: (screenId: string, answer: QuestionAnswer) => void;
 }) {
@@ -282,6 +284,13 @@ export function WBTPlayer({
             style={{ width: `${((screenIndex + 1) / screens.length) * 100}%` }}
           />
         </div>
+
+        {completedAt && (
+          <div className="player-completion-banner">
+            <span className="player-completion-banner-icon">✓</span>
+            You completed this course on {new Date(completedAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+          </div>
+        )}
       </div>
 
       <PlayerScreenNav screens={screens} currentIndex={screenIndex} visitedSet={visitedSet} onJump={jumpTo} />

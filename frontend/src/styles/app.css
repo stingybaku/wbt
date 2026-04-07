@@ -2763,6 +2763,35 @@ input[type="range"]:focus {
   transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ── Completion review banner ─────────────────────────────────────────────── */
+
+.player-completion-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.4rem 1.75rem;
+  background: #f0fdf9;
+  border-bottom: 1px solid #99f6e4;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #0d9488;
+}
+
+.player-completion-banner-icon {
+  font-size: 0.7rem;
+  font-weight: 700;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #0d9488;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 /* ── Hero ─────────────────────────────────────────────────────────────────── */
 
 .player-hero {

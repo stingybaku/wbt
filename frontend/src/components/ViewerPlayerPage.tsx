@@ -11,7 +11,7 @@ const STORAGE_NAME_KEY = (token: string) => `viewer_name_${token}`;
 type ViewerState =
   | { phase: 'gate' }
   | { phase: 'loading' }
-  | { phase: 'ready'; module: Module; projectTitle: string; initialScreenIndex: number; initialAnswers: Record<string, ViewerQuestionAnswer>; initialVisited: number[] }
+  | { phase: 'ready'; module: Module; projectTitle: string; initialScreenIndex: number; initialAnswers: Record<string, ViewerQuestionAnswer>; initialVisited: number[]; completedAt: string | null }
   | { phase: 'error'; message: string };
 
 export function ViewerPlayerPage() {
@@ -58,6 +58,7 @@ export function ViewerPlayerPage() {
         initialScreenIndex,
         initialAnswers,
         initialVisited,
+        completedAt: res.progress?.completed_at ?? null,
       });
     } catch (err: unknown) {
       setState({ phase: 'error', message: err instanceof Error ? err.message : 'Failed to load course.' });
@@ -165,6 +166,7 @@ export function ViewerPlayerPage() {
       initialScreenIndex={state.initialScreenIndex}
       initialAnswers={state.initialAnswers}
       initialVisited={state.initialVisited}
+      completedAt={state.completedAt ?? undefined}
       onScreenChange={handleScreenChange}
       onAnswered={handleAnswered}
     />
