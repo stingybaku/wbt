@@ -62,9 +62,23 @@ export function ProjectsView({ projects, loading, onRefresh }: ProjectsViewProps
                     style={project.cover_image_url ? { backgroundImage: `url(${project.cover_image_url})` } : undefined}
                   >
                     {!project.cover_image_url && <span className="project-card-cover-placeholder">⬡</span>}
+                    {project.source_summary && (
+                      <div className="project-card-overlay">
+                        <p className="project-card-overlay-text">{project.source_summary}</p>
+                      </div>
+                    )}
                   </div>
                   <div className="project-card-body">
                     <strong className="project-card-title">{project.title}</strong>
+                    {project.screen_count !== null && (
+                      <div className="project-card-stats">
+                        {project.duration_minutes !== null && (
+                          <span className="project-card-stat">{project.duration_minutes} min</span>
+                        )}
+                        <span className="project-card-stat">{project.screen_count} screens</span>
+                        <span className="project-card-stat">{project.invite_count} {project.invite_count === 1 ? 'invitee' : 'invitees'}</span>
+                      </div>
+                    )}
                     <time className="project-card-date">
                       {new Date(project.created_at).toLocaleDateString(undefined, {
                         year: 'numeric', month: 'short', day: 'numeric',

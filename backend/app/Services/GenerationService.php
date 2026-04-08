@@ -107,6 +107,7 @@ REQUIRED JSON SCHEMA:
     "title": string,
     "audience": string,
     "duration_minutes": integer (10–30),
+    "summary": string (2–3 sentences describing what this course covers and what learners will gain — written for a learner browsing a course library),
     "source_summary": string (1–2 sentences describing the source),
     "created_at": ISO 8601 datetime string
   },

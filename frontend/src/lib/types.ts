@@ -21,6 +21,10 @@ export type Project = {
   source_character_count: number | null;
   cover_image_url: string | null;
   module_status: 'generating' | 'generated' | 'failed' | null;
+  source_summary: string | null;
+  duration_minutes: number | null;
+  screen_count: number | null;
+  invite_count: number;
   created_at: string;
   updated_at: string;
 };
