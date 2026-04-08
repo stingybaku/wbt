@@ -3688,8 +3688,8 @@ input[type="range"]:focus {
 /* ── Scenario screen ─────────────────────────────────────────────────────── */
 
 .player-scenario-setup {
-  background: var(--surface-2);
-  border-left: 3px solid var(--accent);
+  background: #f9fafb;
+  border-left: 3px solid #f43f23;
   border-radius: 0 8px 8px 0;
   padding: 1rem 1.25rem;
   margin-bottom: 1.25rem;
@@ -3703,19 +3703,20 @@ input[type="range"]:focus {
 
 .player-scenario-choice {
   text-align: left;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: white;
+  border: 1.5px solid #e8e8e8;
   border-radius: 10px;
   padding: 0.85rem 1rem;
   font-size: 0.95rem;
-  color: var(--text);
+  color: #374151;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
 .player-scenario-choice:hover {
-  border-color: var(--accent);
-  background: var(--surface-2);
+  border-color: #f43f23;
+  background: #fafafa;
 }
 
 .player-scenario-consequence {
@@ -3758,13 +3759,13 @@ input[type="range"]:focus {
   margin: 0 0 0.4rem;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text-2);
+  color: #6b7280;
 }
 
 .player-scenario-consequence-text {
   margin: 0;
   font-size: 0.95rem;
-  color: var(--text);
+  color: #111827;
   line-height: 1.55;
 }
 
