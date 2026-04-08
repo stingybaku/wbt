@@ -55,7 +55,8 @@ class GenerationJob implements ShouldQueue
                 projectTitle:       $project->title,
             );
 
-            $moduleJson = $this->enrichImages($moduleJson);
+            [$moduleJson, $usedUrls] = $this->enrichImages($moduleJson);
+            $moduleJson = $this->enrichVideos($moduleJson, $usedUrls);
             $moduleJson = $this->assignLayouts($moduleJson);
 
             $module->update([
@@ -455,16 +456,46 @@ class GenerationJob implements ShouldQueue
             );
         }
 
+        return [$moduleJson, $usedUrls];
+    }
+
+    private function enrichVideos(array $moduleJson, array &$usedUrls): array
+    {
+        $moduleTopic = $this->extractModuleTopic($moduleJson['meta'] ?? []);
+
+        foreach ($moduleJson['screens'] as &$screen) {
+            if ($screen['type'] !== 'video') continue;
+
+            $interaction = &$screen['interactions'][0];
+            if (!empty($interaction['url'])) continue;
+
+            $query  = $screen['title'];
+            $result = $this->pexels->searchVideo($query);
+
+            if ($result && !empty($result['url'])) {
+                $interaction['url'] = $result['url'];
+                Log::info("enrichVideos: fetched Pexels video for '{$query}'");
+            } else {
+                // No video found — convert to image_text with a fetched image
+                Log::warning("enrichVideos: no Pexels video for '{$query}', converting to image_text");
+                $image = $this->fetchImage($query, $usedUrls, $moduleTopic ?: null);
+                $screen['type']         = 'image_text';
+                $screen['interactions'] = [];
+                $screen['image']        = $image
+                    ? ['url' => $image['url'], 'alt_text' => $image['alt_text']]
+                    : ['url' => 'https://placeholder.wbtforge.dev/800x450', 'alt_text' => $query];
+            }
+        }
+        unset($screen, $interaction);
+
         return $moduleJson;
     }
 
     private function assignLayouts(array $moduleJson): array
     {
-        $layouts = ['top', 'bottom', 'left', 'right'];
-
         foreach ($moduleJson['screens'] as &$screen) {
             if ($screen['type'] === 'image_text' && empty($screen['layout'])) {
-                $screen['layout'] = $layouts[array_rand($layouts)];
+                $screen['layout'] = 'top'; // fallback if AI omits layout
             }
         }
 

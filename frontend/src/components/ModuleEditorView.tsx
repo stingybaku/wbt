@@ -226,7 +226,7 @@ function EditorCard({ label, icon, children, accent }: {
 // ─── Meta editor ──────────────────────────────────────────────────────────────
 
 const SCREEN_TYPE_LABELS: Record<Screen['type'], string> = {
-  text:         'Text',
+  text:         'Image + Text',
   image_text:   'Image + Text',
   accordion:    'Accordion',
   click_reveal: 'Click Reveal',
@@ -234,6 +234,7 @@ const SCREEN_TYPE_LABELS: Record<Screen['type'], string> = {
   tabs:         'Tabs',
   process:      'Process',
   flashcard:    'Flashcard',
+  video:        'Video',
 };
 
 function MetaEditor({ draft, onUpdate, token }: {
@@ -347,6 +348,7 @@ function ScreenEditor({ screen, screenIndex, allFlags, onUpdate, token }: {
   const hasTabsInteraction = screen.type === 'tabs' && interaction0?.kind === 'tabs';
   const hasProcessInteraction = screen.type === 'process' && interaction0?.kind === 'process';
   const hasFlashcardInteraction = screen.type === 'flashcard' && interaction0?.kind === 'flashcard';
+  const hasVideoInteraction = screen.type === 'video' && interaction0?.kind === 'video';
 
   const openFlags = screenFlags.filter(f => f.flag.status === 'open');
 
@@ -384,7 +386,7 @@ function ScreenEditor({ screen, screenIndex, allFlags, onUpdate, token }: {
           onPickerOpen={() => setPickerOpen(true)}
           onLightbox={url => setLightboxUrl(url)}
         />
-        {screen.type === 'image_text' && (
+        {(screen.type === 'image_text' || screen.type === 'text') && (
           <div className="field-group">
             <label>Layout</label>
             <LayoutPicker value={screen.layout ?? 'top'} onChange={v => updateScreen(s => { s.layout = v; })} />
@@ -451,6 +453,33 @@ function ScreenEditor({ screen, screenIndex, allFlags, onUpdate, token }: {
               (s.interactions[0] as { kind: string; cards: { front: string; back: string }[] }).cards = cards;
             })}
           />
+        </EditorCard>
+      )}
+
+      {hasVideoInteraction && (
+        <EditorCard label="Video" icon="▶">
+          <div className="field-group">
+            <label>Video URL</label>
+            <input
+              type="url"
+              placeholder="YouTube, Vimeo, or direct .mp4 URL"
+              value={(interaction0 as { kind: 'video'; url: string; caption?: string }).url}
+              onChange={e => { const v = e.target.value; updateScreen(s => {
+                (s.interactions[0] as { kind: 'video'; url: string; caption?: string }).url = v;
+              }); }}
+            />
+          </div>
+          <div className="field-group">
+            <label>Caption <span className="field-optional">(optional)</span></label>
+            <input
+              type="text"
+              placeholder="Brief description shown below the video"
+              value={(interaction0 as { kind: 'video'; url: string; caption?: string }).caption ?? ''}
+              onChange={e => { const v = e.target.value; updateScreen(s => {
+                (s.interactions[0] as { kind: 'video'; url: string; caption?: string }).caption = v || undefined;
+              }); }}
+            />
+          </div>
         </EditorCard>
       )}
 

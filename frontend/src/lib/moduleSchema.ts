@@ -49,6 +49,11 @@ const interactionSchema = z.discriminatedUnion('kind', [
     kind: z.literal('flashcard'),
     cards: z.array(z.object({ front: z.string(), back: z.string() })).min(2),
   }),
+  z.object({
+    kind: z.literal('video'),
+    url: z.string(),
+    caption: z.string().optional(),
+  }),
 ]);
 
 export const imageTextLayouts = ['top', 'bottom', 'left', 'right'] as const;
@@ -56,7 +61,7 @@ export type ImageTextLayout = typeof imageTextLayouts[number];
 
 const screenSchema = z.object({
   id: z.string(),
-  type: z.enum(['text', 'image_text', 'accordion', 'click_reveal', 'question', 'tabs', 'process', 'flashcard']),
+  type: z.enum(['text', 'image_text', 'accordion', 'click_reveal', 'question', 'tabs', 'process', 'flashcard', 'video']),
   title: z.string(),
   body: z.string(),
   image: z
