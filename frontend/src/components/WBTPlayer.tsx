@@ -417,6 +417,7 @@ const screenTypeLabel: Record<Screen['type'], string> = {
   process:      'Follow',
   flashcard:    'Recall',
   video:        'Watch',
+  scenario:     'Decide',
 };
 
 // ─── Screen renderer ──────────────────────────────────────────────────────────
@@ -442,7 +443,9 @@ function ScreenRenderer({
 }) {
   // Question is "ready" (Next unlocked) once it's been submitted — either
   // just now or restored from a previous visit.
-  const questionReady = screen.type !== 'question' || (questionAnswer?.submitted ?? false);
+  const questionReady =
+    (screen.type !== 'question' && screen.type !== 'scenario') ||
+    (questionAnswer?.submitted ?? false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const heroDir = useMemo(randomDir, []);
   const contentDir = useMemo(randomDir, []);
@@ -491,6 +494,13 @@ function ScreenRenderer({
           {screen.type === 'process' && <ProcessScreen screen={screen} />}
           {screen.type === 'flashcard' && <FlashcardScreen screen={screen} />}
           {screen.type === 'video' && <VideoScreen screen={screen} />}
+          {screen.type === 'scenario' && (
+            <ScenarioScreen
+              screen={screen}
+              savedAnswer={questionAnswer}
+              onAnswered={answer => onAnswered(screen.id, answer)}
+            />
+          )}
         </article>
       </main>
 
@@ -958,6 +968,68 @@ function VideoScreen({ screen }: { screen: Screen }) {
       </div>
       {caption && <p className="player-video-caption muted">{caption}</p>}
     </div>
+  );
+}
+
+// ─── Scenario screen ──────────────────────────────────────────────────────────
+
+function ScenarioScreen({
+  screen,
+  savedAnswer,
+  onAnswered,
+}: {
+  screen: Screen;
+  savedAnswer?: QuestionAnswer;
+  onAnswered: (answer: QuestionAnswer) => void;
+}) {
+  const interaction = screen.interactions[0];
+  if (!interaction || interaction.kind !== 'scenario') return null;
+
+  const [picked, setPicked] = useState<string | null>(
+    savedAnswer?.submitted ? (savedAnswer.selected[0] ?? null) : null
+  );
+
+  const chosen = picked ? interaction.choices.find(c => c.id === picked) : null;
+
+  function handlePick(id: string) {
+    if (picked) return; // locked after first pick
+    setPicked(id);
+    onAnswered({ selected: [id], submitted: true, isCorrect: true });
+  }
+
+  return (
+    <>
+      <div className="player-scenario-setup">
+        <RichText text={interaction.setup} />
+      </div>
+
+      {!chosen && (
+        <div className="player-scenario-choices">
+          {interaction.choices.map(choice => (
+            <button
+              key={choice.id}
+              type="button"
+              className="player-scenario-choice"
+              onClick={() => handlePick(choice.id)}
+            >
+              {choice.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {chosen && (
+        <div className={`player-scenario-consequence player-scenario-consequence--${chosen.tone}`}>
+          <span className="player-scenario-consequence-icon" aria-hidden="true">
+            {chosen.tone === 'success' ? '✓' : chosen.tone === 'failure' ? '✗' : '⚠'}
+          </span>
+          <div>
+            <p className="player-scenario-choice-label">{chosen.label}</p>
+            <p className="player-scenario-consequence-text">{chosen.consequence}</p>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

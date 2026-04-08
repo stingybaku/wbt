@@ -264,7 +264,29 @@ SCREEN TYPES (use a variety of types distributed across the module — prefer va
   "accessibility": { "alt_text": string }
 }
 
-8. video screen — embed a short video clip that illustrates a concept (use sparingly, at most 1 per module, only when a visual demonstration adds real value):
+8. scenario screen — a realistic situation requiring a decision, ideal for soft skills, compliance, and safety training (use 1–2 per module):
+{
+  "id": "scr_008b",
+  "type": "scenario",
+  "title": string,
+  "body": "",
+  "image": { "url": "https://placeholder.wbtforge.dev/800x450", "alt_text": string },
+  "interactions": [
+    {
+      "kind": "scenario",
+      "setup": string (2–4 sentences describing the situation the learner faces),
+      "choices": [
+        { "id": "c1", "label": string, "consequence": string (1–2 sentences of realistic outcome), "tone": "success" | "warning" | "failure" },
+        { "id": "c2", "label": string, "consequence": string, "tone": "success" | "warning" | "failure" },
+        { "id": "c3", "label": string, "consequence": string, "tone": "success" | "warning" | "failure" }
+      ]
+    }
+  ],
+  "accessibility": { "alt_text": string }
+}
+Each scenario MUST have 2–4 choices. At least one choice should have tone "success" and at least one should have tone "failure". Consequences should feel realistic and educational, not punitive.
+
+9. video screen — embed a short video clip that illustrates a concept (use sparingly, at most 1 per module, only when a visual demonstration adds real value):
 {
   "id": "scr_009",
   "type": "video",
@@ -291,7 +313,7 @@ VALIDATION RULES:
 - All screen IDs must be unique
 - Minimum 10 screens total
 - Every screen MUST have a non-null image object with a descriptive alt_text, EXCEPT video screens which must have "image": null
-- question, tabs, process, and flashcard screens MUST include at least 1 interaction
+- question, tabs, process, flashcard, and scenario screens MUST include at least 1 interaction
 - accordion, click_reveal, tabs, and process interactions MUST have at least 2 items
 - flashcard interactions MUST have at least 2 cards
 - single_choice and multi_choice interactions MUST have at least 2 choices
@@ -415,7 +437,7 @@ SYSTEM,
         foreach ($screens as $i => $screen) {
             $idx = $i + 1;
 
-            if (in_array($screen['type'], ['question', 'tabs', 'process', 'flashcard', 'video']) && empty($screen['interactions'])) {
+            if (in_array($screen['type'], ['question', 'tabs', 'process', 'flashcard', 'video', 'scenario']) && empty($screen['interactions'])) {
                 throw new \RuntimeException("Screen {$idx} ({$screen['type']}) must have at least 1 interaction");
             }
 

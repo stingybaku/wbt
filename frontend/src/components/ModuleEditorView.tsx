@@ -235,6 +235,7 @@ const SCREEN_TYPE_LABELS: Record<Screen['type'], string> = {
   process:      'Process',
   flashcard:    'Flashcard',
   video:        'Video',
+  scenario:     'Scenario',
 };
 
 function MetaEditor({ draft, onUpdate, token }: {
@@ -348,7 +349,8 @@ function ScreenEditor({ screen, screenIndex, allFlags, onUpdate, token }: {
   const hasTabsInteraction = screen.type === 'tabs' && interaction0?.kind === 'tabs';
   const hasProcessInteraction = screen.type === 'process' && interaction0?.kind === 'process';
   const hasFlashcardInteraction = screen.type === 'flashcard' && interaction0?.kind === 'flashcard';
-  const hasVideoInteraction = screen.type === 'video' && interaction0?.kind === 'video';
+  const hasVideoInteraction    = screen.type === 'video'    && interaction0?.kind === 'video';
+  const hasScenarioInteraction = screen.type === 'scenario' && interaction0?.kind === 'scenario';
 
   const openFlags = screenFlags.filter(f => f.flag.status === 'open');
 
@@ -482,6 +484,77 @@ function ScreenEditor({ screen, screenIndex, allFlags, onUpdate, token }: {
           </div>
         </EditorCard>
       )}
+
+      {hasScenarioInteraction && (() => {
+        type ScenarioChoice = { id: string; label: string; consequence: string; tone: 'success' | 'warning' | 'failure' };
+        type ScenarioInteraction = { kind: 'scenario'; setup: string; choices: ScenarioChoice[] };
+        const sc = interaction0 as ScenarioInteraction;
+        return (
+          <EditorCard label="Scenario" icon="⬡">
+            <div className="field-group">
+              <label>Setup</label>
+              <textarea
+                rows={4}
+                placeholder="Describe the situation the learner must respond to…"
+                value={sc.setup}
+                onChange={e => { const v = e.target.value; updateScreen(s => {
+                  (s.interactions[0] as ScenarioInteraction).setup = v;
+                }); }}
+              />
+            </div>
+            <div className="scenario-choices-editor">
+              {sc.choices.map((choice, ci) => (
+                <div key={choice.id} className="scenario-choice-row">
+                  <div className="scenario-choice-row-header">
+                    <span className="scenario-choice-num">Choice {ci + 1}</span>
+                    <select
+                      value={choice.tone}
+                      onChange={e => { const v = e.target.value as ScenarioChoice['tone']; updateScreen(s => {
+                        (s.interactions[0] as ScenarioInteraction).choices[ci].tone = v;
+                      }); }}
+                      className={`scenario-tone-select scenario-tone-select--${choice.tone}`}
+                    >
+                      <option value="success">✓ Success</option>
+                      <option value="warning">⚠ Warning</option>
+                      <option value="failure">✗ Failure</option>
+                    </select>
+                    {sc.choices.length > 2 && (
+                      <button type="button" className="ghost scenario-remove-btn" onClick={() => updateScreen(s => {
+                        (s.interactions[0] as ScenarioInteraction).choices.splice(ci, 1);
+                      })}>Remove</button>
+                    )}
+                  </div>
+                  <input
+                    placeholder="Choice label"
+                    value={choice.label}
+                    onChange={e => { const v = e.target.value; updateScreen(s => {
+                      (s.interactions[0] as ScenarioInteraction).choices[ci].label = v;
+                    }); }}
+                  />
+                  <textarea
+                    rows={2}
+                    placeholder="Consequence shown after this choice is picked…"
+                    value={choice.consequence}
+                    onChange={e => { const v = e.target.value; updateScreen(s => {
+                      (s.interactions[0] as ScenarioInteraction).choices[ci].consequence = v;
+                    }); }}
+                  />
+                </div>
+              ))}
+              {sc.choices.length < 4 && (
+                <button type="button" className="ghost" onClick={() => updateScreen(s => {
+                  (s.interactions[0] as ScenarioInteraction).choices.push({
+                    id: 'c' + Date.now(),
+                    label: '',
+                    consequence: '',
+                    tone: 'warning',
+                  });
+                })}>+ Add choice</button>
+              )}
+            </div>
+          </EditorCard>
+        );
+      })()}
 
       <EditorCard label="Review flags" icon="⚑" accent={openFlags.length > 0 ? 'danger' : undefined}>
         <FlagsPanel screenId={screen.id} screenFlags={screenFlags} onUpdate={onUpdate} />
