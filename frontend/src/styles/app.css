@@ -715,6 +715,35 @@ button.ghost:hover:not(:disabled) {
   opacity: 0.35;
 }
 
+.project-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 1;
+}
+
+.project-card:hover .project-card-overlay {
+  opacity: 1;
+}
+
+.project-card-overlay-text {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .project-card-body {
   padding: 0.9rem 1rem 1rem;
   display: flex;
@@ -728,6 +757,22 @@ button.ghost:hover:not(:disabled) {
   font-weight: 600;
   line-height: 1.35;
   color: var(--text);
+}
+
+.project-card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.project-card-stat {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
 }
 
 .project-card-date {

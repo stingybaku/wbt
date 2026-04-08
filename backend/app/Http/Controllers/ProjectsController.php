@@ -12,14 +12,21 @@ class ProjectsController extends Controller
     {
         $projects = Project::where('user_id', $request->user()->id)
             ->orderByDesc('created_at')
-            ->with(['modules' => fn($q) => $q->select('project_id', 'status', 'cover_image_url')])
+            ->with(['modules' => fn($q) => $q->select('project_id', 'status', 'cover_image_url', 'module_json')])
+            ->withCount(['invites' => fn($q) => $q->whereNull('revoked_at')->where('expires_at', '>', now())])
             ->get()
             ->map(function ($project) {
                 $module = $project->modules->first();
+                $moduleJson = $module?->module_json;
                 $data = $project->toArray();
                 unset($data['modules']);
-                $data['cover_image_url'] = $module?->cover_image_url;
-                $data['module_status']   = $module?->status;
+                $data['cover_image_url']  = $module?->cover_image_url;
+                $data['module_status']    = $module?->status;
+                $data['source_summary']   = $moduleJson['meta']['source_summary'] ?? null;
+                $data['duration_minutes'] = $moduleJson['meta']['duration_minutes'] ?? null;
+                $data['screen_count']     = isset($moduleJson['screens']) ? count($moduleJson['screens']) : null;
+                $data['invite_count']     = $project->invites_count;
+                unset($data['invites_count']);
                 return $data;
             });
 
