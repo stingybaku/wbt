@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\ViewerInviteMail;
+use App\Models\Event;
 use App\Models\ProjectInvite;
 use App\Models\Project;
 use Illuminate\Http\Request;
@@ -71,6 +72,13 @@ class ProjectInvitesController extends Controller
 
         Mail::to($data['email'])->send(new ViewerInviteMail($invite));
 
+        Event::create([
+            'id'         => 'evt_' . Str::uuid(),
+            'project_id' => $project->id,
+            'type'       => 'invite.sent',
+            'meta'       => ['email' => $data['email'], 'expires_days' => $data['expires_days']],
+        ]);
+
         return response()->json(['invite' => $this->formatInvite($invite)], 201);
     }
 
@@ -85,6 +93,13 @@ class ProjectInvitesController extends Controller
             ->firstOrFail();
 
         $invite->update(['revoked_at' => now()]);
+
+        Event::create([
+            'id'         => 'evt_' . Str::uuid(),
+            'project_id' => $project->id,
+            'type'       => 'invite.revoked',
+            'meta'       => ['email' => $invite->email],
+        ]);
 
         return response()->json(['ok' => true]);
     }

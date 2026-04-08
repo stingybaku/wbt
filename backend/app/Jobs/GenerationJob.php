@@ -2,9 +2,11 @@
 
 namespace App\Jobs;
 
+use App\Models\Event;
 use App\Models\Module;
 use App\Models\Project;
 use App\Notifications\GenerationCompleteNotification;
+use Illuminate\Support\Str;
 use App\Notifications\GenerationFailedNotification;
 use App\Services\GenerationService;
 use App\Services\ImageCacheService;
@@ -65,10 +67,25 @@ class GenerationJob implements ShouldQueue
 
             $project->user->notify(new GenerationCompleteNotification($project));
 
+            Event::create([
+                'id'         => 'evt_' . Str::uuid(),
+                'project_id' => $this->projectId,
+                'type'       => 'module.generated',
+                'meta'       => ['screen_count' => count($moduleJson['screens'] ?? [])],
+            ]);
+
             Log::info("GenerationJob succeeded for project {$this->projectId}");
         } catch (\Throwable $e) {
             $this->markFailed($module, $e->getMessage());
             $project->user->notify(new GenerationFailedNotification($project));
+
+            Event::create([
+                'id'         => 'evt_' . Str::uuid(),
+                'project_id' => $this->projectId,
+                'type'       => 'module.failed',
+                'meta'       => ['error' => $e->getMessage()],
+            ]);
+
             Log::error("GenerationJob failed for project {$this->projectId}: " . $e->getMessage());
         }
     }
