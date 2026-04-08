@@ -509,6 +509,7 @@ function ScreenRenderer({
           {screen.type === 'tabs' && <TabsScreen screen={screen} />}
           {screen.type === 'process' && <ProcessScreen screen={screen} />}
           {screen.type === 'flashcard' && <FlashcardScreen screen={screen} />}
+          {screen.type === 'video' && <VideoScreen screen={screen} />}
         </article>
       </main>
 
@@ -942,6 +943,45 @@ function FlashcardScreen({ screen }: { screen: Screen }) {
       </div>
       <p className="player-flashcard-hint muted">Click any card to flip it</p>
     </>
+  );
+}
+
+// ─── Video screen ─────────────────────────────────────────────────────────────
+
+function VideoScreen({ screen }: { screen: Screen }) {
+  const interaction = screen.interactions[0];
+  if (!interaction || interaction.kind !== 'video') return null;
+
+  const { url, caption } = interaction;
+
+  const embedUrl = (() => {
+    // YouTube
+    const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    if (yt) return `https://www.youtube.com/embed/${yt[1]}?rel=0`;
+    // Vimeo
+    const vm = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+    if (vm) return `https://player.vimeo.com/video/${vm[1]}`;
+    return null;
+  })();
+
+  return (
+    <div className="player-video-wrap">
+      {screen.body && <RichText text={screen.body} />}
+      <div className="player-video-container">
+        {embedUrl ? (
+          <iframe
+            src={embedUrl}
+            className="player-video-iframe"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title={screen.title}
+          />
+        ) : (
+          <video src={url} className="player-video-native" controls />
+        )}
+      </div>
+      {caption && <p className="player-video-caption muted">{caption}</p>}
+    </div>
   );
 }
 
