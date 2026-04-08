@@ -1038,6 +1038,12 @@ button.ghost:hover:not(:disabled) {
   gap: 1.25rem;
 }
 
+.detail-full {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
 .detail-side {
   display: flex;
   flex-direction: column;

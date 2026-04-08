@@ -226,8 +226,7 @@ export function ProjectDetailView() {
         </div>
 
         {activeTab === 'overview' && (
-          <div className="detail-grid">
-            <div className="detail-main">
+          <div className="detail-full">
               <div className="card">
                 <h2>Module</h2>
                 <ModuleStatusPanel
@@ -262,22 +261,19 @@ export function ProjectDetailView() {
                   </>
                 );
               })()}
-            </div>
           </div>
         )}
 
         {activeTab === 'viewers' && (
-          <div className="detail-grid">
-            <div className="detail-main">
-              <ViewersPanel
-                invites={invites}
-                moduleReady={module?.status === 'generated'}
-                onInvite={handleInvite}
-                onRevoke={handleRevoke}
-                authToken={token ?? ''}
-                projectId={id ?? ''}
-              />
-            </div>
+          <div className="detail-full">
+            <ViewersPanel
+              invites={invites}
+              moduleReady={module?.status === 'generated'}
+              onInvite={handleInvite}
+              onRevoke={handleRevoke}
+              authToken={token ?? ''}
+              projectId={id ?? ''}
+            />
           </div>
         )}
 
