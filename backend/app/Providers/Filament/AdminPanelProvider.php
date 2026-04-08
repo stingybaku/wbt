@@ -39,6 +39,7 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 \App\Filament\Widgets\AdminStatsOverview::class,
                 \App\Filament\Widgets\CompletionsChart::class,
+                \App\Filament\Widgets\GenerationsChart::class,
                 \App\Filament\Widgets\LatestGenerationsTable::class,
                 Widgets\AccountWidget::class,
             ])
