@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Event;
 use App\Models\InviteProgress;
 use App\Models\ProjectInvite;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ViewerController extends Controller
 {
@@ -64,10 +66,21 @@ class ViewerController extends Controller
             return response()->json(['message' => 'The email address does not match this invitation.'], 403);
         }
 
+        $alreadyStarted = InviteProgress::where('invite_id', $invite->id)->exists();
+
         InviteProgress::updateOrCreate(
             ['invite_id' => $invite->id],
             ['viewer_name' => trim($data['name'])]
         );
+
+        if (!$alreadyStarted) {
+            Event::create([
+                'id'         => 'evt_' . Str::uuid(),
+                'project_id' => $invite->project_id,
+                'type'       => 'viewer.started',
+                'meta'       => ['email' => $invite->email, 'viewer_name' => trim($data['name'])],
+            ]);
+        }
 
         return response()->json(['ok' => true]);
     }
@@ -118,6 +131,16 @@ class ViewerController extends Controller
 
         if ($isComplete && !$alreadyCompleted) {
             \App\Jobs\GenerateCertificateJob::dispatch($invite->id);
+
+            Event::create([
+                'id'         => 'evt_' . Str::uuid(),
+                'project_id' => $invite->project_id,
+                'type'       => 'viewer.completed',
+                'meta'       => [
+                    'email'       => $invite->email,
+                    'viewer_name' => $existing?->viewer_name,
+                ],
+            ]);
         }
 
         return response()->json(['ok' => true]);
