@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Project extends Model
@@ -29,6 +30,16 @@ class Project extends Model
     public function modules(): HasMany
     {
         return $this->hasMany(Module::class);
+    }
+
+    public function module(): HasOne
+    {
+        return $this->hasOne(Module::class);
+    }
+
+    public function invites(): HasMany
+    {
+        return $this->hasMany(ProjectInvite::class);
     }
 
     public function flags(): HasMany
