@@ -127,29 +127,23 @@ IMPORTANT IMAGE RULE: Every screen of every type MUST include an image object. N
 
 SCREEN TYPES (use a variety of types distributed across the module — prefer variety over repetition, but you do not need to use every type):
 
-1. text screen:
+1. image_text screen — text body paired with an image. Choose a layout that suits the content:
+  - "top" (default) — image above body text
+  - "bottom" — image below body text
+  - "left" — image left, text right (good for portrait images or diagrams)
+  - "right" — image right, text left
 {
   "id": "scr_001",
-  "type": "text",
-  "title": string,
-  "body": string,
-  "image": { "url": "https://placeholder.wbtforge.dev/800x450", "alt_text": string },
-  "interactions": [],
-  "accessibility": { "alt_text": string }
-}
-
-2. image_text screen (image is the visual focus):
-{
-  "id": "scr_002",
   "type": "image_text",
   "title": string,
   "body": string,
+  "layout": "top" | "bottom" | "left" | "right",
   "image": { "url": "https://placeholder.wbtforge.dev/800x450", "alt_text": string },
   "interactions": [],
   "accessibility": { "alt_text": string }
 }
 
-3. accordion screen:
+2. accordion screen:
 {
   "id": "scr_003",
   "type": "accordion",
@@ -168,7 +162,7 @@ SCREEN TYPES (use a variety of types distributed across the module — prefer va
   "accessibility": { "alt_text": string }
 }
 
-4. click_reveal screen:
+3. click_reveal screen:
 {
   "id": "scr_004",
   "type": "click_reveal",
@@ -187,7 +181,7 @@ SCREEN TYPES (use a variety of types distributed across the module — prefer va
   "accessibility": { "alt_text": string }
 }
 
-5. question screen (MUST have at least 1 interaction):
+4. question screen (MUST have at least 1 interaction):
 {
   "id": "scr_005",
   "type": "question",
@@ -212,7 +206,7 @@ SCREEN TYPES (use a variety of types distributed across the module — prefer va
   "accessibility": { "alt_text": string }
 }
 
-6. tabs screen — parallel topics shown in horizontal tabs (MUST have at least 1 interaction with at least 2 items):
+5. tabs screen — parallel topics shown in horizontal tabs (MUST have at least 1 interaction with at least 2 items):
 {
   "id": "scr_006",
   "type": "tabs",
@@ -231,7 +225,7 @@ SCREEN TYPES (use a variety of types distributed across the module — prefer va
   "accessibility": { "alt_text": string }
 }
 
-7. process screen — numbered sequential steps for a procedure or workflow (MUST have at least 1 interaction with at least 2 items):
+6. process screen — numbered sequential steps for a procedure or workflow (MUST have at least 1 interaction with at least 2 items):
 {
   "id": "scr_007",
   "type": "process",
@@ -250,7 +244,7 @@ SCREEN TYPES (use a variety of types distributed across the module — prefer va
   "accessibility": { "alt_text": string }
 }
 
-8. flashcard screen — flip cards for terms and definitions (MUST have at least 1 interaction with at least 2 cards):
+7. flashcard screen — flip cards for terms and definitions (MUST have at least 1 interaction with at least 2 cards):
 {
   "id": "scr_008",
   "type": "flashcard",
@@ -269,7 +263,7 @@ SCREEN TYPES (use a variety of types distributed across the module — prefer va
   "accessibility": { "alt_text": string }
 }
 
-9. video screen — embed a short video clip that illustrates a concept (use sparingly, at most 1 per module, only when a visual demonstration adds real value):
+8. video screen — embed a short video clip that illustrates a concept (use sparingly, at most 1 per module, only when a visual demonstration adds real value):
 {
   "id": "scr_009",
   "type": "video",

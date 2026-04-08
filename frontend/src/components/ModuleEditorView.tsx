@@ -226,7 +226,7 @@ function EditorCard({ label, icon, children, accent }: {
 // ─── Meta editor ──────────────────────────────────────────────────────────────
 
 const SCREEN_TYPE_LABELS: Record<Screen['type'], string> = {
-  text:         'Text',
+  text:         'Image + Text',
   image_text:   'Image + Text',
   accordion:    'Accordion',
   click_reveal: 'Click Reveal',
@@ -386,7 +386,7 @@ function ScreenEditor({ screen, screenIndex, allFlags, onUpdate, token }: {
           onPickerOpen={() => setPickerOpen(true)}
           onLightbox={url => setLightboxUrl(url)}
         />
-        {screen.type === 'image_text' && (
+        {(screen.type === 'image_text' || screen.type === 'text') && (
           <div className="field-group">
             <label>Layout</label>
             <LayoutPicker value={screen.layout ?? 'top'} onChange={v => updateScreen(s => { s.layout = v; })} />

@@ -408,7 +408,7 @@ function CoverScreen({
 // ─── Screen type labels ───────────────────────────────────────────────────────
 
 const screenTypeLabel: Record<Screen['type'], string> = {
-  text:         'Read',
+  text:         'Visual', // legacy — renders as image_text
   image_text:   'Visual',
   accordion:    'Explore',
   click_reveal: 'Discover',
@@ -416,6 +416,7 @@ const screenTypeLabel: Record<Screen['type'], string> = {
   tabs:         'Navigate',
   process:      'Follow',
   flashcard:    'Recall',
+  video:        'Watch',
 };
 
 // ─── Screen renderer ──────────────────────────────────────────────────────────
@@ -474,27 +475,7 @@ function ScreenRenderer({
 
       <main className="player-content" aria-label={`Screen ${screenIndex + 1} of ${totalScreens}`}>
         <article className={`player-screen player-screen--enter-${contentDir}`}>
-          {screen.image && screen.type !== 'image_text' && (
-            <figure className="player-figure">
-              <img
-                src={screen.image.url}
-                alt={screen.image.alt_text}
-                className="player-image"
-              />
-              {imageAttribution && (
-                <figcaption className="player-attribution">
-                  Photo by{' '}
-                  <a href={imageAttribution.url} target="_blank" rel="noopener noreferrer">
-                    {imageAttribution.photographer}
-                  </a>{' '}
-                  on {imageAttribution.license.replace(' License', '')}
-                </figcaption>
-              )}
-            </figure>
-          )}
-
-          {screen.type === 'text' && <TextScreen screen={screen} />}
-          {screen.type === 'image_text' && (
+          {(screen.type === 'text' || screen.type === 'image_text') && (
             <ImageTextScreen screen={screen} attribution={imageAttribution ?? null} />
           )}
           {screen.type === 'accordion' && <AccordionScreen screen={screen} />}
@@ -533,12 +514,6 @@ function ScreenRenderer({
       </nav>
     </>
   );
-}
-
-// ─── Text screen ──────────────────────────────────────────────────────────────
-
-function TextScreen({ screen }: { screen: Screen }) {
-  return <RichText text={screen.body} />;
 }
 
 // ─── Image + text screen ──────────────────────────────────────────────────────

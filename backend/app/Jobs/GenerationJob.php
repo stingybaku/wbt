@@ -493,11 +493,9 @@ class GenerationJob implements ShouldQueue
 
     private function assignLayouts(array $moduleJson): array
     {
-        $layouts = ['top', 'bottom', 'left', 'right'];
-
         foreach ($moduleJson['screens'] as &$screen) {
             if ($screen['type'] === 'image_text' && empty($screen['layout'])) {
-                $screen['layout'] = $layouts[array_rand($layouts)];
+                $screen['layout'] = 'top'; // fallback if AI omits layout
             }
         }
 
