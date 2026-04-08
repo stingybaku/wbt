@@ -3786,6 +3786,19 @@ input[type="range"]:focus {
   background: #f8f9fa;
   justify-content: center;
   align-items: center;
+  position: relative;
+}
+
+.player-cover--has-image::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--cover-image);
+  background-size: cover;
+  background-position: center;
+  filter: blur(12px);
+  transform: scale(1.05);
+  opacity: 0.55;
 }
 
 .player-cover-card {
@@ -3798,6 +3811,7 @@ input[type="range"]:focus {
   display: grid;
   gap: 1.25rem;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  position: relative;
 }
 
 .player-cover-meta {

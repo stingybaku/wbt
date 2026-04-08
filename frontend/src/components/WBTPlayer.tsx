@@ -367,8 +367,12 @@ function CoverScreen({
   viewerMode: boolean;
   onStart: () => void;
 }) {
+  const coverImage = module.meta.cover_image;
   return (
-    <div className="player-shell player-cover">
+    <div
+      className={`player-shell player-cover${coverImage ? ' player-cover--has-image' : ''}`}
+      style={coverImage ? { '--cover-image': `url(${coverImage})` } as React.CSSProperties : undefined}
+    >
       <div className="player-cover-card">
         <p className="player-cover-meta">
           {module.meta.audience} · {module.meta.duration_minutes} min
