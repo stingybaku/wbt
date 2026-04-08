@@ -3616,6 +3616,8 @@ input[type="range"]:focus {
   flex-direction: column;
   gap: 0.4rem;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  overflow: hidden;
+  min-width: 0;
 }
 
 .player-flashcard-front {
@@ -3645,6 +3647,9 @@ input[type="range"]:focus {
   display: -webkit-box;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  min-width: 0;
 }
 
 .player-flashcard-hint {
