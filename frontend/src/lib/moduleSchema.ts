@@ -51,7 +51,7 @@ const interactionSchema = z.discriminatedUnion('kind', [
   }),
   z.object({
     kind: z.literal('video'),
-    url: z.string().url(),
+    url: z.string(),
     caption: z.string().optional(),
   }),
 ]);

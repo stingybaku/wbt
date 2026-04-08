@@ -269,18 +269,38 @@ SCREEN TYPES (use a variety of types distributed across the module — prefer va
   "accessibility": { "alt_text": string }
 }
 
+9. video screen — embed a short video clip that illustrates a concept (use sparingly, at most 1 per module, only when a visual demonstration adds real value):
+{
+  "id": "scr_009",
+  "type": "video",
+  "title": string,
+  "body": string,
+  "image": null,
+  "interactions": [
+    {
+      "kind": "video",
+      "url": "",
+      "caption": string
+    }
+  ],
+  "accessibility": { "alt_text": null }
+}
+The "url" field MUST always be an empty string "". A video_query field is NOT needed — the system will fetch a relevant Pexels video automatically based on the screen title.
+
 STRUCTURE RULES:
 - The final screen in the "screens" array MUST be a "text" type screen that serves as the course conclusion. Its title should be "Conclusion" or equivalent, and its body should summarise the key takeaways from the module.
 - Do not place question screens after the conclusion screen.
+- Use at most 1 video screen per module.
 
 VALIDATION RULES:
 - All screen IDs must be unique
 - Minimum 10 screens total
-- Every screen MUST have a non-null image object with a descriptive alt_text
+- Every screen MUST have a non-null image object with a descriptive alt_text, EXCEPT video screens which must have "image": null
 - question, tabs, process, and flashcard screens MUST include at least 1 interaction
 - accordion, click_reveal, tabs, and process interactions MUST have at least 2 items
 - flashcard interactions MUST have at least 2 cards
 - single_choice and multi_choice interactions MUST have at least 2 choices
+- video screens MUST have exactly 1 interaction with kind "video" and url ""
 SYSTEM;
 
         $userPrompt = <<<USER
@@ -400,7 +420,7 @@ SYSTEM,
         foreach ($screens as $i => $screen) {
             $idx = $i + 1;
 
-            if (in_array($screen['type'], ['question', 'tabs', 'process', 'flashcard']) && empty($screen['interactions'])) {
+            if (in_array($screen['type'], ['question', 'tabs', 'process', 'flashcard', 'video']) && empty($screen['interactions'])) {
                 throw new \RuntimeException("Screen {$idx} ({$screen['type']}) must have at least 1 interaction");
             }
 

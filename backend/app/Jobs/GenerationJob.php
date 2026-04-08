@@ -56,6 +56,7 @@ class GenerationJob implements ShouldQueue
             );
 
             $moduleJson = $this->enrichImages($moduleJson);
+            $moduleJson = $this->enrichVideos($moduleJson);
             $moduleJson = $this->assignLayouts($moduleJson);
 
             $module->update([
@@ -454,6 +455,28 @@ class GenerationJob implements ShouldQueue
                 })
             );
         }
+
+        return $moduleJson;
+    }
+
+    private function enrichVideos(array $moduleJson): array
+    {
+        foreach ($moduleJson['screens'] as &$screen) {
+            if ($screen['type'] !== 'video') continue;
+
+            $interaction = &$screen['interactions'][0];
+            if (empty($interaction['url'])) {
+                $query  = $screen['title'];
+                $result = $this->pexels->searchVideo($query);
+                if ($result && !empty($result['url'])) {
+                    $interaction['url'] = $result['url'];
+                    Log::info("enrichVideos: fetched Pexels video for '{$query}'");
+                } else {
+                    Log::warning("enrichVideos: no Pexels video found for '{$query}'");
+                }
+            }
+        }
+        unset($screen, $interaction);
 
         return $moduleJson;
     }

@@ -953,6 +953,7 @@ function VideoScreen({ screen }: { screen: Screen }) {
   if (!interaction || interaction.kind !== 'video') return null;
 
   const { url, caption } = interaction;
+  if (!url) return <p className="muted">No video URL has been set for this screen.</p>;
 
   const embedUrl = (() => {
     // YouTube
