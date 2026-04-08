@@ -19,11 +19,14 @@ export function ProjectDetailView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'report'>(
-    searchParams.get('tab') === 'report' ? 'report' : 'overview'
-  );
+  const [activeTab, setActiveTab] = useState<'overview' | 'viewers' | 'report'>(() => {
+    const t = searchParams.get('tab');
+    if (t === 'report') return 'report';
+    if (t === 'viewers') return 'viewers';
+    return 'overview';
+  });
 
-  function switchTab(tab: 'overview' | 'report') {
+  function switchTab(tab: 'overview' | 'viewers' | 'report') {
     setActiveTab(tab);
     setSearchParams(tab === 'overview' ? {} : { tab });
   }
@@ -208,6 +211,13 @@ export function ProjectDetailView() {
           </button>
           <button
             type="button"
+            className={`detail-tab${activeTab === 'viewers' ? ' detail-tab--active' : ''}`}
+            onClick={() => switchTab('viewers')}
+          >
+            Viewers
+          </button>
+          <button
+            type="button"
             className={`detail-tab${activeTab === 'report' ? ' detail-tab--active' : ''}`}
             onClick={() => switchTab('report')}
           >
@@ -215,10 +225,8 @@ export function ProjectDetailView() {
           </button>
         </div>
 
-        {activeTab === 'overview' ? (
-          <div className="detail-grid">
-            {/* Left column */}
-            <div className="detail-main">
+        {activeTab === 'overview' && (
+          <div className="detail-full">
               <div className="card">
                 <h2>Module</h2>
                 <ModuleStatusPanel
@@ -228,21 +236,48 @@ export function ProjectDetailView() {
                   onRetry={handleRetry}
                 />
               </div>
-            </div>
 
-            {/* Right column */}
-            <div className="detail-side">
-              <ViewersPanel
-                invites={invites}
-                moduleReady={module?.status === 'generated'}
-                onInvite={handleInvite}
-                onRevoke={handleRevoke}
-                authToken={token ?? ''}
-                projectId={id ?? ''}
-              />
-            </div>
+              {module?.status === 'generated' && (() => {
+                const summary    = module.module_json?.meta.summary ?? module.module_json?.meta.source_summary ?? null;
+                const objectives = module.module_json?.learning_objectives ?? [];
+                return (
+                  <>
+                    {summary && (
+                      <div className="card">
+                        <h2>Description</h2>
+                        <p className="overview-description">{summary}</p>
+                      </div>
+                    )}
+                    {objectives.length > 0 && (
+                      <div className="card">
+                        <h2>Learning objectives</h2>
+                        <ul className="overview-objectives">
+                          {objectives.map((obj, i) => (
+                            <li key={i}>{obj}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
           </div>
-        ) : (
+        )}
+
+        {activeTab === 'viewers' && (
+          <div className="detail-full">
+            <ViewersPanel
+              invites={invites}
+              moduleReady={module?.status === 'generated'}
+              onInvite={handleInvite}
+              onRevoke={handleRevoke}
+              authToken={token ?? ''}
+              projectId={id ?? ''}
+            />
+          </div>
+        )}
+
+        {activeTab === 'report' && (
           <ReportPanel authToken={token ?? ''} projectId={id ?? ''} />
         )}
       </section>
@@ -304,25 +339,15 @@ function ModuleStatusPanel({
   }
 
   if (module.status === 'generated') {
-    const title      = module.module_json?.meta.title ?? 'Untitled';
-    const objectives = module.module_json?.learning_objectives ?? [];
+    const title = module.module_json?.meta.title ?? 'Untitled';
 
     return (
-      <div>
-        <div className="module-status-visual" style={{ marginBottom: objectives.length ? '0.75rem' : 0 }}>
-          <div className="module-status-icon module-status-icon--success">✓</div>
-          <div className="module-status-text">
-            <strong>{title}</strong>
-            <p>Ready to review and share with learners.</p>
-          </div>
+      <div className="module-status-visual">
+        <div className="module-status-icon module-status-icon--success">✓</div>
+        <div className="module-status-text">
+          <strong>{title}</strong>
+          <p>Ready to review and share with learners.</p>
         </div>
-        {objectives.length > 0 && (
-          <ul style={{ paddingLeft: '1.25rem', margin: 0 }}>
-            {objectives.map((obj, i) => (
-              <li key={i} className="muted" style={{ fontSize: '0.82rem', marginBottom: '0.2rem' }}>{obj}</li>
-            ))}
-          </ul>
-        )}
       </div>
     );
   }

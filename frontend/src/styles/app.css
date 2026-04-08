@@ -949,6 +949,38 @@ button.ghost:hover:not(:disabled) {
   gap: 1rem;
 }
 
+.overview-description {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+
+.overview-objectives {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.overview-objectives li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 0.875rem;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.overview-objectives li::before {
+  content: '→';
+  color: var(--accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
 .module-status-icon {
   width: 44px;
   height: 44px;
@@ -1001,6 +1033,12 @@ button.ghost:hover:not(:disabled) {
 }
 
 .detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.detail-full {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
