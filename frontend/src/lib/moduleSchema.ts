@@ -82,6 +82,7 @@ export const moduleSchema = z
       title: z.string(),
       audience: z.string(),
       duration_minutes: z.number().min(10).max(30),
+      summary: z.string().optional(),
       source_summary: z.string(),
       created_at: z.string(),
       cover_image: z.string().optional(),
