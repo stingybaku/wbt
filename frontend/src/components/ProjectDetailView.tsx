@@ -19,11 +19,14 @@ export function ProjectDetailView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'report'>(
-    searchParams.get('tab') === 'report' ? 'report' : 'overview'
-  );
+  const [activeTab, setActiveTab] = useState<'overview' | 'viewers' | 'report'>(() => {
+    const t = searchParams.get('tab');
+    if (t === 'report') return 'report';
+    if (t === 'viewers') return 'viewers';
+    return 'overview';
+  });
 
-  function switchTab(tab: 'overview' | 'report') {
+  function switchTab(tab: 'overview' | 'viewers' | 'report') {
     setActiveTab(tab);
     setSearchParams(tab === 'overview' ? {} : { tab });
   }
@@ -208,6 +211,13 @@ export function ProjectDetailView() {
           </button>
           <button
             type="button"
+            className={`detail-tab${activeTab === 'viewers' ? ' detail-tab--active' : ''}`}
+            onClick={() => switchTab('viewers')}
+          >
+            Viewers
+          </button>
+          <button
+            type="button"
             className={`detail-tab${activeTab === 'report' ? ' detail-tab--active' : ''}`}
             onClick={() => switchTab('report')}
           >
@@ -215,9 +225,8 @@ export function ProjectDetailView() {
           </button>
         </div>
 
-        {activeTab === 'overview' ? (
+        {activeTab === 'overview' && (
           <div className="detail-grid">
-            {/* Left column */}
             <div className="detail-main">
               <div className="card">
                 <h2>Module</h2>
@@ -254,9 +263,12 @@ export function ProjectDetailView() {
                 );
               })()}
             </div>
+          </div>
+        )}
 
-            {/* Right column */}
-            <div className="detail-side">
+        {activeTab === 'viewers' && (
+          <div className="detail-grid">
+            <div className="detail-main">
               <ViewersPanel
                 invites={invites}
                 moduleReady={module?.status === 'generated'}
@@ -267,7 +279,9 @@ export function ProjectDetailView() {
               />
             </div>
           </div>
-        ) : (
+        )}
+
+        {activeTab === 'report' && (
           <ReportPanel authToken={token ?? ''} projectId={id ?? ''} />
         )}
       </section>
