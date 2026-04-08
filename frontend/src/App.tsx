@@ -9,6 +9,7 @@ import { CreateProjectWizard } from './components/CreateProjectWizard';
 import { ModuleReviewPage } from './components/ModuleEditorView';
 import { WBTPlayerPage } from './components/WBTPlayer';
 import { ViewerPlayerPage } from './components/ViewerPlayerPage';
+import { BillingView, BillingSuccessPage, BillingCancelPage } from './components/BillingView';
 import { useIdleTimeout } from './hooks/useIdleTimeout';
 import { login, fetchProjects } from './lib/api';
 import { useState, useEffect } from 'react';
@@ -124,6 +125,9 @@ const router = createBrowserRouter([
           { path: '/projects/new', element: <CreateProjectWizard /> },
           { path: '/projects/:id', element: <ProjectDetailView /> },
           { path: '/projects/:id/review', element: <ModuleReviewPage /> },
+          { path: '/billing', element: <BillingView /> },
+          { path: '/billing/success', element: <BillingSuccessPage /> },
+          { path: '/billing/cancel', element: <BillingCancelPage /> },
         ],
       },
     ],

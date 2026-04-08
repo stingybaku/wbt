@@ -6,6 +6,7 @@ namespace App\Models;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -51,6 +52,11 @@ class User extends Authenticatable implements FilamentUser
             'password' => 'hashed',
             'must_change_password' => 'boolean',
         ];
+    }
+
+    public function subscription(): HasOne
+    {
+        return $this->hasOne(Subscription::class)->where('status', 'active')->latestOfMany();
     }
 
     public function role(): BelongsTo

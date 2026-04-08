@@ -1,14 +1,26 @@
 import type {
+  BillingSubscription,
   CreateProjectResponse,
   FrontendTextsResponse,
   LoginResponse,
   ModuleResponse,
   NotificationsResponse,
+  Plan,
   ProjectsResponse,
 } from './types';
 import type { Module } from './moduleSchema';
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api').replace(/\/$/, '');
+
+export class QuotaError extends Error {
+  constructor(
+    message: string,
+    public readonly code: 'no_subscription' | 'module_limit_reached' | 'seat_limit_reached'
+  ) {
+    super(message);
+    this.name = 'QuotaError';
+  }
+}
 
 // Registered by AuthProvider to clear auth state when a 401 is received.
 let unauthorizedHandler: (() => void) | null = null;
@@ -36,6 +48,14 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   if (response.status === 401) {
     unauthorizedHandler?.();
     throw new Error('Session expired. Please log in again.');
+  }
+
+  if (response.status === 402) {
+    const json = await response.json().catch(() => ({})) as { message?: string; code?: string };
+    throw new QuotaError(
+      json.message || 'Quota exceeded.',
+      (json.code as QuotaError['code']) || 'no_subscription'
+    );
   }
 
   if (!response.ok) {
@@ -267,6 +287,36 @@ export function markAllNotificationsRead(token: string): Promise<{ ok: boolean }
 
 export function fetchFrontendTexts(routeKey: string): Promise<FrontendTextsResponse> {
   return request<FrontendTextsResponse>(`/frontend-texts?route_key=${encodeURIComponent(routeKey)}`);
+}
+
+// ─── Billing ──────────────────────────────────────────────────────────────────
+
+export function fetchBillingPlans(token: string): Promise<{ plans: Plan[] }> {
+  return request<{ plans: Plan[] }>('/billing/plans', { token });
+}
+
+export function fetchCurrentSubscription(token: string): Promise<{ subscription: BillingSubscription | null }> {
+  return request<{ subscription: BillingSubscription | null }>('/billing/current', { token });
+}
+
+export function startCheckout(token: string, planId: string): Promise<{ approval_url: string }> {
+  return request<{ approval_url: string }>('/billing/checkout', {
+    method: 'POST',
+    token,
+    body: { plan_id: planId },
+  });
+}
+
+export function captureOrder(token: string, orderId: string): Promise<{ subscription: BillingSubscription }> {
+  return request<{ subscription: BillingSubscription }>('/billing/capture-order', {
+    method: 'POST',
+    token,
+    body: { order_id: orderId },
+  });
+}
+
+export function cancelSubscription(token: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>('/billing/cancel', { method: 'POST', token });
 }
 
 export type UnsplashPhoto = {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { fetchProject, fetchModule, generateModule, fetchInvites, createInvite, revokeInvite, downloadCertificate, fetchProjectReport } from '../lib/api';
+import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { fetchProject, fetchModule, generateModule, fetchInvites, createInvite, revokeInvite, downloadCertificate, fetchProjectReport, QuotaError } from '../lib/api';
 import type { ProjectReport } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import type { Project, ModuleRecord, ProjectInvite } from '../lib/types';
@@ -12,6 +12,7 @@ export function ProjectDetailView() {
   const { id } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { token } = useAuth();
+  const navigate = useNavigate();
 
   const [project, setProject] = useState<Project | null>(null);
   const [module, setModule] = useState<ModuleRecord | null>(null);
@@ -86,6 +87,10 @@ export function ProjectDetailView() {
       setModule(res.module);
       startPolling();
     } catch (err: unknown) {
+      if (err instanceof QuotaError) {
+        navigate('/billing');
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Failed to start generation');
     } finally {
       setRetrying(false);
@@ -94,11 +99,19 @@ export function ProjectDetailView() {
 
   async function handleInvite(email: string, expiresDays: number) {
     if (!token || !id) return;
-    const res = await createInvite(token, id, { email, expires_days: expiresDays });
-    setInvites(prev => {
-      const without = prev.filter(i => i.email !== email);
-      return [res.invite, ...without];
-    });
+    try {
+      const res = await createInvite(token, id, { email, expires_days: expiresDays });
+      setInvites(prev => {
+        const without = prev.filter(i => i.email !== email);
+        return [res.invite, ...without];
+      });
+    } catch (err: unknown) {
+      if (err instanceof QuotaError) {
+        navigate('/billing');
+        return;
+      }
+      throw err;
+    }
   }
 
   async function handleRevoke(inviteId: string) {
