@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Plan;
+use App\Models\Project;
 use App\Models\Subscription;
 use App\Services\PayPalService;
 use Illuminate\Http\Request;
@@ -168,7 +169,7 @@ class BillingController extends Controller
 
     private function formatSubscription(Subscription $sub): array
     {
-        return [
+        $data = [
             'id'                 => $sub->id,
             'plan'               => [
                 'id'             => $sub->plan->id,
@@ -187,5 +188,35 @@ class BillingController extends Controller
             'current_period_end' => $sub->current_period_end?->toIso8601String(),
             'cancelled_at'       => $sub->cancelled_at?->toIso8601String(),
         ];
+
+        // For one-time plans, include per-project slot breakdown
+        if ($sub->plan->isOneTime()) {
+            $seatLimit = $sub->plan->seat_limit; // 10 per slot
+
+            $projects = Project::where('user_id', $sub->user_id)
+                ->whereHas('module', fn ($q) => $q->where('status', 'generated'))
+                ->with(['module:id,project_id', 'invites' => fn ($q) => $q->whereNull('revoked_at')->where('expires_at', '>', now())])
+                ->orderBy('created_at')
+                ->get()
+                ->map(fn ($p) => [
+                    'id'         => $p->id,
+                    'title'      => $p->title,
+                    'seats_used' => $p->invites->count(),
+                    'seats_limit' => $seatLimit,
+                ])
+                ->values()
+                ->toArray();
+
+            // Pad with empty slots for unused purchased modules
+            $totalSlots = $sub->modulesAvailable() + $sub->modules_used;
+            $emptySlots = max(0, $totalSlots - count($projects));
+            for ($i = 0; $i < $emptySlots; $i++) {
+                $projects[] = ['id' => null, 'title' => null, 'seats_used' => 0, 'seats_limit' => $seatLimit];
+            }
+
+            $data['slots'] = $projects;
+        }
+
+        return $data;
     }
 }

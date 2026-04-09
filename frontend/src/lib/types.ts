@@ -106,6 +106,13 @@ export type Plan = {
   paypal_plan_id: string | null;
 };
 
+export type BillingSlot = {
+  id: string | null;
+  title: string | null;
+  seats_used: number;
+  seats_limit: number;
+};
+
 export type BillingSubscription = {
   id: string;
   plan: Pick<Plan, 'id' | 'name' | 'type' | 'module_limit' | 'seat_limit' | 'billing_period' | 'rollover'>;
@@ -116,4 +123,5 @@ export type BillingSubscription = {
   seats_available: number;
   current_period_end: string | null;
   cancelled_at: string | null;
+  slots?: BillingSlot[];
 };

@@ -8,7 +8,7 @@ import {
   fetchCurrentSubscription,
   startCheckout,
 } from '../lib/api';
-import type { BillingSubscription, Plan } from '../lib/types';
+import type { BillingSlot, BillingSubscription, Plan } from '../lib/types';
 
 // ─── Billing page ─────────────────────────────────────────────────────────────
 
@@ -113,6 +113,8 @@ export function BillingView() {
             />
           </div>
 
+          {subscription.slots && <SlotBreakdown slots={subscription.slots} />}
+
           {subscription.current_period_end && (
             <p className="billing-renews">
               {subscription.status === 'cancelled' ? 'Access until' : 'Renews'}:{' '}
@@ -147,6 +149,53 @@ export function BillingView() {
           />
         ))}
       </div>
+    </div>
+  );
+}
+
+// ─── Slot breakdown (one-time plans) ─────────────────────────────────────────
+
+function SlotBreakdown({ slots }: { slots: BillingSlot[] }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="slot-breakdown">
+      <button
+        type="button"
+        className="ghost slot-breakdown-toggle"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span>{open ? '▲' : '▼'}</span>
+        <span>
+          {slots.filter((s) => s.id).length} / {slots.length} module{slots.length !== 1 ? 's' : ''} in use
+        </span>
+      </button>
+
+      {open && (
+        <ul className="slot-list">
+          {slots.map((slot, i) => {
+            const pct = slot.seats_limit === 0 ? 0 : Math.round((slot.seats_used / slot.seats_limit) * 100);
+            return (
+              <li key={slot.id ?? `empty-${i}`} className="slot-item">
+                <div className="slot-item-header">
+                  <span className="slot-item-title">
+                    {slot.title ?? <em className="slot-item-empty">Unused slot</em>}
+                  </span>
+                  <span className="slot-item-seats">
+                    {slot.seats_used}/{slot.seats_limit} seats
+                  </span>
+                </div>
+                <div className="slot-item-bar-track">
+                  <div
+                    className={`slot-item-bar-fill${pct >= 80 ? ' slot-item-bar-fill--warn' : ''}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
