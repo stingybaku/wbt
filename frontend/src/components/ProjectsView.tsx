@@ -5,6 +5,12 @@ import { createTextResolver, type FrontendTextMap } from '../lib/text';
 import { useAuth } from '../context/AuthContext';
 import type { BillingSubscription, Project } from '../lib/types';
 
+function canCreateProject(subscription: BillingSubscription | null | undefined): boolean {
+  if (subscription === undefined) return true; // still loading — optimistically allow
+  if (!subscription) return false;
+  return subscription.modules_available > 0;
+}
+
 function PlanBanner({ subscription }: { subscription: BillingSubscription | null }) {
   if (!subscription) {
     return (
@@ -79,9 +85,17 @@ export function ProjectsView({ projects, loading, onRefresh }: ProjectsViewProps
           <h1>{t('projects.title', 'Projects')}</h1>
         </div>
         <div className="actions">
-          <Link to="/projects/new">
-            <button type="button">{t('projects.new_button', 'New Project')}</button>
-          </Link>
+          {canCreateProject(subscription) ? (
+            <Link to="/projects/new">
+              <button type="button">{t('projects.new_button', 'New Project')}</button>
+            </Link>
+          ) : (
+            <Link to="/billing">
+              <button type="button" title="No module quota remaining — upgrade your plan">
+                {subscription === null ? 'Get a plan' : 'Upgrade plan'}
+              </button>
+            </Link>
+          )}
           <button type="button" className="ghost" onClick={onRefresh} disabled={loading}>
             {loading ? t('projects.refreshing_button', 'Refreshing...') : t('projects.refresh_button', 'Refresh')}
           </button>
