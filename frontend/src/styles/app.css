@@ -4348,46 +4348,61 @@ input[type="range"]:focus {
   background: #f59e0b;
 }
 
-/* ── Plan banner ──────────────────────────────────────────────────────────── */
+/* ── Plan dashboard (projects view) ───────────────────────────────────────── */
 
-.plan-banner {
+.plan-no-sub {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.6rem 1rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  font-size: 0.85rem;
-  color: var(--text-2);
+  justify-content: space-between;
+  gap: 1rem;
   flex-wrap: wrap;
 }
 
-.plan-banner--warn {
-  border-color: #f59e0b44;
-  background: #fef3c722;
-}
-
-.plan-banner--none {
-  border-style: dashed;
-}
-
-.plan-banner-name {
+.plan-no-sub-title {
   font-weight: 600;
   color: var(--text);
+  margin: 0 0 0.2rem;
 }
 
-.plan-banner-sep {
-  color: var(--text-3);
+.plan-no-sub-sub {
+  font-size: 0.875rem;
+  color: var(--text-2);
+  margin: 0;
 }
 
-.plan-banner-stat--warn {
+.plan-dashboard {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.plan-dashboard-name-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.plan-dashboard-plan-name {
+  font-size: 1rem !important;
+  font-weight: 700;
+  letter-spacing: 0 !important;
+}
+
+.plan-dashboard-card--warn {
+  border-color: #f59e0b66;
+}
+
+.plan-dashboard-warn-note {
+  font-size: 0.75rem;
   color: #d97706;
   font-weight: 600;
 }
 
+.plan-dashboard-renews {
+  font-size: 1.25rem !important;
+}
+
 .plan-banner-link {
-  margin-left: auto;
   font-size: 0.825rem;
   font-weight: 600;
   color: var(--accent);
@@ -4396,6 +4411,12 @@ input[type="range"]:focus {
 
 .plan-banner-link:hover {
   text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .plan-dashboard {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 /* ── Billing ──────────────────────────────────────────────────────────────── */
