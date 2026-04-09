@@ -21,21 +21,27 @@ function PlanBanner({ subscription }: { subscription: BillingSubscription | null
     );
   }
 
-  const modulePct = (subscription.modules_used / (subscription.plan.module_limit || 1)) * 100;
-  const seatPct   = subscription.seats_used / (subscription.plan.seat_limit || 1) * 100;
-  const isWarn    = modulePct >= 80 || seatPct >= 80;
+  const isOneTime  = subscription.plan.type === 'one_time';
+  const totalSlots = subscription.modules_used + subscription.modules_available;
+  const modulePct  = totalSlots === 0 ? 0 : (subscription.modules_used / totalSlots) * 100;
+  const seatPct    = subscription.seats_used / (subscription.plan.seat_limit || 1) * 100;
+  const isWarn     = modulePct >= 80 || (!isOneTime && seatPct >= 80);
 
   return (
     <div className={`plan-banner${isWarn ? ' plan-banner--warn' : ''}`}>
       <span className="plan-banner-name">{subscription.plan.name}</span>
       <span className="plan-banner-sep">·</span>
       <span className={modulePct >= 80 ? 'plan-banner-stat--warn' : undefined}>
-        Modules: {subscription.modules_used}/{subscription.plan.module_limit} used
+        Modules: {subscription.modules_used}/{totalSlots} used
       </span>
       <span className="plan-banner-sep">·</span>
-      <span className={seatPct >= 80 ? 'plan-banner-stat--warn' : undefined}>
-        Seats: {subscription.seats_used}/{subscription.plan.seat_limit} used
-      </span>
+      {isOneTime ? (
+        <span>{subscription.plan.seat_limit} seats per module</span>
+      ) : (
+        <span className={seatPct >= 80 ? 'plan-banner-stat--warn' : undefined}>
+          Seats: {subscription.seats_used}/{subscription.plan.seat_limit} used
+        </span>
+      )}
       <Link to="/billing" className="plan-banner-link">Manage plan →</Link>
     </div>
   );
