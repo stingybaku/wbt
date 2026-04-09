@@ -13,7 +13,7 @@ class Subscription extends Model
     protected $fillable = [
         'id', 'user_id', 'plan_id', 'status',
         'paypal_order_id', 'paypal_subscription_id',
-        'modules_used', 'modules_rolled_over', 'bonus_modules',
+        'modules_used', 'modules_rolled_over', 'bonus_modules', 'bonus_seats',
         'current_period_start', 'current_period_end',
         'cancelled_at',
     ];
@@ -55,6 +55,6 @@ class Subscription extends Model
 
     public function seatsAvailable(): int
     {
-        return max(0, $this->plan->seat_limit - $this->seatsUsed());
+        return max(0, $this->plan->seat_limit + ($this->bonus_seats ?? 0) - $this->seatsUsed());
     }
 }

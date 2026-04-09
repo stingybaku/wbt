@@ -109,7 +109,7 @@ export function BillingView() {
               label="Seats"
               used={subscription.seats_used}
               available={subscription.seats_available}
-              limit={subscription.plan.seat_limit}
+              limit={subscription.seats_used + subscription.seats_available}
             />
           </div>
 

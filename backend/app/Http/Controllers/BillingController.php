@@ -119,6 +119,7 @@ class BillingController extends Controller
 
         if ($existing) {
             $existing->increment('bonus_modules');
+            $existing->increment('bonus_seats', $subscription->plan->seat_limit);
             $subscription->update(['status' => 'captured']); // keep for audit, never activate
             return response()->json(['subscription' => $this->formatSubscription($existing->fresh())]);
         }
