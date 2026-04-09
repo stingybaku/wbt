@@ -4273,6 +4273,56 @@ input[type="range"]:focus {
   }
 }
 
+/* ── Plan banner ──────────────────────────────────────────────────────────── */
+
+.plan-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: 0.85rem;
+  color: var(--text-2);
+  flex-wrap: wrap;
+}
+
+.plan-banner--warn {
+  border-color: #f59e0b44;
+  background: #fef3c722;
+}
+
+.plan-banner--none {
+  border-style: dashed;
+}
+
+.plan-banner-name {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.plan-banner-sep {
+  color: var(--text-3);
+}
+
+.plan-banner-stat--warn {
+  color: #d97706;
+  font-weight: 600;
+}
+
+.plan-banner-link {
+  margin-left: auto;
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.plan-banner-link:hover {
+  text-decoration: underline;
+}
+
 /* ── Billing ──────────────────────────────────────────────────────────────── */
 
 .billing-page {

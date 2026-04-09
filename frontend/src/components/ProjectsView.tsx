@@ -1,8 +1,42 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchFrontendTexts } from '../lib/api';
+import { fetchFrontendTexts, fetchCurrentSubscription } from '../lib/api';
 import { createTextResolver, type FrontendTextMap } from '../lib/text';
-import type { Project } from '../lib/types';
+import { useAuth } from '../context/AuthContext';
+import type { BillingSubscription, Project } from '../lib/types';
+
+function PlanBanner({ subscription }: { subscription: BillingSubscription | null | undefined }) {
+  // Still loading — render nothing to avoid layout shift
+  if (subscription === undefined) return null;
+
+  if (!subscription) {
+    return (
+      <div className="plan-banner plan-banner--none">
+        <span>You don't have an active plan.</span>
+        <Link to="/billing" className="plan-banner-link">View plans →</Link>
+      </div>
+    );
+  }
+
+  const modulePct = (subscription.modules_used / (subscription.plan.module_limit || 1)) * 100;
+  const seatPct   = subscription.seats_used / (subscription.plan.seat_limit || 1) * 100;
+  const isWarn    = modulePct >= 80 || seatPct >= 80;
+
+  return (
+    <div className={`plan-banner${isWarn ? ' plan-banner--warn' : ''}`}>
+      <span className="plan-banner-name">{subscription.plan.name}</span>
+      <span className="plan-banner-sep">·</span>
+      <span className={modulePct >= 80 ? 'plan-banner-stat--warn' : undefined}>
+        Modules: {subscription.modules_used}/{subscription.plan.module_limit} used
+      </span>
+      <span className="plan-banner-sep">·</span>
+      <span className={seatPct >= 80 ? 'plan-banner-stat--warn' : undefined}>
+        Seats: {subscription.seats_used}/{subscription.plan.seat_limit} used
+      </span>
+      <Link to="/billing" className="plan-banner-link">Manage plan →</Link>
+    </div>
+  );
+}
 
 type ProjectsViewProps = {
   projects: Project[];
@@ -12,7 +46,9 @@ type ProjectsViewProps = {
 
 export function ProjectsView({ projects, loading, onRefresh }: ProjectsViewProps) {
   const routeKey = 'projects.list';
+  const { token } = useAuth();
   const [frontendTexts, setFrontendTexts] = useState<FrontendTextMap | null>(null);
+  const [subscription, setSubscription] = useState<BillingSubscription | null | undefined>(undefined);
   const hasLoggedFetchError = useRef(false);
 
   useEffect(() => {
@@ -25,6 +61,13 @@ export function ProjectsView({ projects, loading, onRefresh }: ProjectsViewProps
         }
       });
   }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    fetchCurrentSubscription(token)
+      .then((res) => setSubscription(res.subscription))
+      .catch(() => setSubscription(null));
+  }, [token]);
 
   const sortedProjects = useMemo(
     () => [...projects].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
@@ -47,6 +90,8 @@ export function ProjectsView({ projects, loading, onRefresh }: ProjectsViewProps
           </button>
         </div>
       </header>
+
+      <PlanBanner subscription={subscription} />
 
       <section>
         <h2 className="projects-grid-heading">{t('projects.recent_title', 'Recent Projects')}</h2>
