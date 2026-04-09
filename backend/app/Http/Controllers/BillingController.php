@@ -92,7 +92,16 @@ class BillingController extends Controller
 
         $subscription = Subscription::where('paypal_order_id', $data['order_id'])
             ->where('user_id', $request->user()->id)
-            ->firstOrFail();
+            ->first();
+
+        // Already processed (page refresh or double-submit) — return the active sub.
+        if (!$subscription || $subscription->status === 'captured') {
+            $active = $this->activeSubscription($request->user()->id);
+            if ($active) {
+                return response()->json(['subscription' => $this->formatSubscription($active)]);
+            }
+            return response()->json(['message' => 'Order not found or already processed.'], 404);
+        }
 
         $capture = $this->paypal->captureOrder($data['order_id']);
 
@@ -100,7 +109,7 @@ class BillingController extends Controller
             return response()->json(['message' => 'Payment not completed.'], 422);
         }
 
-        // For one-time plans: stack bonus modules onto any existing active one-time subscription
+        // For one-time plans: stack bonus modules onto the existing active one-time subscription
         // rather than activating a second record.
         $existing = Subscription::where('user_id', $request->user()->id)
             ->where('status', 'active')
@@ -108,9 +117,9 @@ class BillingController extends Controller
             ->latest()
             ->first();
 
-        if ($existing && $existing->id !== $subscription->id) {
+        if ($existing) {
             $existing->increment('bonus_modules');
-            $subscription->delete();
+            $subscription->update(['status' => 'captured']); // keep for audit, never activate
             return response()->json(['subscription' => $this->formatSubscription($existing->fresh())]);
         }
 
