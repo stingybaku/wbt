@@ -132,7 +132,16 @@ export function BillingView() {
           <PlanCard
             key={plan.id}
             plan={plan}
-            isCurrent={subscription?.plan.id === plan.id && subscription?.status === 'active'}
+            isCurrent={
+              plan.type === 'subscription' &&
+              subscription?.plan.id === plan.id &&
+              subscription?.status === 'active'
+            }
+            isOwned={
+              plan.type === 'one_time' &&
+              subscription?.plan.id === plan.id &&
+              subscription?.status === 'active'
+            }
             loading={checkoutLoading === plan.id}
             onSelect={() => handleCheckout(plan.id)}
           />
@@ -147,11 +156,13 @@ export function BillingView() {
 function PlanCard({
   plan,
   isCurrent,
+  isOwned,
   loading,
   onSelect,
 }: {
   plan: Plan;
   isCurrent: boolean;
+  isOwned: boolean;
   loading: boolean;
   onSelect: () => void;
 }) {
@@ -199,7 +210,7 @@ function PlanCard({
         disabled={isCurrent || loading}
         className={isCurrent ? 'ghost' : undefined}
       >
-        {loading ? 'Redirecting…' : isCurrent ? 'Current plan' : 'Get started'}
+        {loading ? 'Redirecting…' : isCurrent ? 'Current plan' : isOwned ? 'Buy again' : 'Get started'}
       </button>
     </div>
   );
