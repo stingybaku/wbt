@@ -5,10 +5,7 @@ import { createTextResolver, type FrontendTextMap } from '../lib/text';
 import { useAuth } from '../context/AuthContext';
 import type { BillingSubscription, Project } from '../lib/types';
 
-function PlanBanner({ subscription }: { subscription: BillingSubscription | null | undefined }) {
-  // Still loading — render nothing to avoid layout shift
-  if (subscription === undefined) return null;
-
+function PlanBanner({ subscription }: { subscription: BillingSubscription | null }) {
   if (!subscription) {
     return (
       <div className="plan-banner plan-banner--none">
@@ -91,7 +88,12 @@ export function ProjectsView({ projects, loading, onRefresh }: ProjectsViewProps
         </div>
       </header>
 
-      <PlanBanner subscription={subscription} />
+      {subscription !== undefined && (
+        <section>
+          <h2 className="projects-grid-heading">Current Plan</h2>
+          <PlanBanner subscription={subscription} />
+        </section>
+      )}
 
       <section>
         <h2 className="projects-grid-heading">{t('projects.recent_title', 'Recent Projects')}</h2>
