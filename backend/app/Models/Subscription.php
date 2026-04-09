@@ -13,7 +13,7 @@ class Subscription extends Model
     protected $fillable = [
         'id', 'user_id', 'plan_id', 'status',
         'paypal_order_id', 'paypal_subscription_id',
-        'modules_used', 'modules_rolled_over',
+        'modules_used', 'modules_rolled_over', 'bonus_modules',
         'current_period_start', 'current_period_end',
         'cancelled_at',
     ];
@@ -41,7 +41,7 @@ class Subscription extends Model
 
     public function modulesAvailable(): int
     {
-        $limit = $this->plan->module_limit + $this->modules_rolled_over;
+        $limit = $this->plan->module_limit + ($this->bonus_modules ?? 0) + $this->modules_rolled_over;
         return max(0, $limit - $this->modules_used);
     }
 

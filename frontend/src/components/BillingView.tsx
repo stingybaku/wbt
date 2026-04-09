@@ -103,7 +103,7 @@ export function BillingView() {
               label="Modules"
               used={subscription.modules_used}
               available={subscription.modules_available}
-              limit={subscription.plan.module_limit}
+              limit={subscription.modules_used + subscription.modules_available}
             />
             <QuotaBar
               label="Seats"

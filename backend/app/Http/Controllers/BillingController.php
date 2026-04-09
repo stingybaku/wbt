@@ -100,6 +100,20 @@ class BillingController extends Controller
             return response()->json(['message' => 'Payment not completed.'], 422);
         }
 
+        // For one-time plans: stack bonus modules onto any existing active one-time subscription
+        // rather than activating a second record.
+        $existing = Subscription::where('user_id', $request->user()->id)
+            ->where('status', 'active')
+            ->whereHas('plan', fn ($q) => $q->where('type', 'one_time'))
+            ->latest()
+            ->first();
+
+        if ($existing && $existing->id !== $subscription->id) {
+            $existing->increment('bonus_modules');
+            $subscription->delete();
+            return response()->json(['subscription' => $this->formatSubscription($existing->fresh())]);
+        }
+
         $subscription->update([
             'status'               => 'active',
             'current_period_start' => now(),
