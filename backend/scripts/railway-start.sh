@@ -98,6 +98,9 @@ if [ -n "${MAIL_PASSWORD:-}" ]; then upsert_env "MAIL_PASSWORD" "${MAIL_PASSWORD
 if [ -n "${MAIL_FROM_ADDRESS:-}" ]; then upsert_env "MAIL_FROM_ADDRESS" "${MAIL_FROM_ADDRESS}"; fi
 if [ -n "${MAIL_FROM_NAME:-}" ]; then upsert_env "MAIL_FROM_NAME" "${MAIL_FROM_NAME}"; fi
 
+# Persist queue connection.
+if [ -n "${QUEUE_CONNECTION:-}" ]; then upsert_env "QUEUE_CONNECTION" "${QUEUE_CONNECTION}"; fi
+
 # Persist AI / media keys.
 if [ -n "${ANTHROPIC_API_KEY:-}" ]; then upsert_env "ANTHROPIC_API_KEY" "${ANTHROPIC_API_KEY}"; fi
 if [ -n "${ANTHROPIC_MODEL:-}" ]; then upsert_env "ANTHROPIC_MODEL" "${ANTHROPIC_MODEL}"; fi
