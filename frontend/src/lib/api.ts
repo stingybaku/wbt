@@ -1,5 +1,6 @@
 import type {
   BillingSubscription,
+  BillingTransaction,
   CreateProjectResponse,
   FrontendTextsResponse,
   LoginResponse,
@@ -317,6 +318,24 @@ export function captureOrder(token: string, orderId: string): Promise<{ subscrip
 
 export function cancelSubscription(token: string): Promise<{ ok: boolean }> {
   return request<{ ok: boolean }>('/billing/cancel', { method: 'POST', token });
+}
+
+export function fetchTransactions(token: string): Promise<{ transactions: BillingTransaction[] }> {
+  return request<{ transactions: BillingTransaction[] }>('/billing/transactions', { token });
+}
+
+export async function downloadInvoice(token: string, transactionId: string, filename: string): Promise<void> {
+  const res = await fetch(`${apiBase}/billing/transactions/${transactionId}/invoice`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/pdf' },
+  });
+  if (!res.ok) throw new Error('Failed to download invoice');
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export type UnsplashPhoto = {

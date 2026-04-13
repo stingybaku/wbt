@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\PurchaseConfirmationMail;
 use App\Models\Plan;
 use App\Models\Project;
 use App\Models\Subscription;
+use App\Models\Transaction;
 use App\Services\PayPalService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class BillingController extends Controller
@@ -118,10 +121,27 @@ class BillingController extends Controller
             ->latest()
             ->first();
 
+        $amountCents = (int) round(
+            (float) ($capture['purchase_units'][0]['payments']['captures'][0]['amount']['value'] ?? $subscription->plan->price_cents / 100) * 100
+        );
+
         if ($existing) {
             $existing->increment('bonus_modules');
             $existing->increment('bonus_seats', $subscription->plan->seat_limit);
             $subscription->update(['status' => 'captured']); // keep for audit, never activate
+
+            $transaction = Transaction::create([
+                'user_id'         => $request->user()->id,
+                'subscription_id' => $existing->id,
+                'plan_name'       => $subscription->plan->name,
+                'plan_type'       => $subscription->plan->type,
+                'amount_cents'    => $amountCents,
+                'paypal_reference' => $data['order_id'],
+                'description'     => 'Additional module purchase',
+            ]);
+            $transaction->load('user');
+            Mail::to($request->user()->email)->queue(new PurchaseConfirmationMail($transaction));
+
             return response()->json(['subscription' => $this->formatSubscription($existing->fresh())]);
         }
 
@@ -131,7 +151,58 @@ class BillingController extends Controller
             'current_period_end'   => null,
         ]);
 
+        $transaction = Transaction::create([
+            'user_id'         => $request->user()->id,
+            'subscription_id' => $subscription->id,
+            'plan_name'       => $subscription->plan->name,
+            'plan_type'       => $subscription->plan->type,
+            'amount_cents'    => $amountCents,
+            'paypal_reference' => $data['order_id'],
+        ]);
+        $transaction->load('user');
+        Mail::to($request->user()->email)->queue(new PurchaseConfirmationMail($transaction));
+
         return response()->json(['subscription' => $this->formatSubscription($subscription->fresh())]);
+    }
+
+    // ─── Transaction history ──────────────────────────────────────────────────
+
+    public function transactions(Request $request)
+    {
+        $transactions = Transaction::where('user_id', $request->user()->id)
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn ($t) => [
+                'id'               => $t->id,
+                'plan_name'        => $t->plan_name,
+                'plan_type'        => $t->plan_type,
+                'amount_formatted' => $t->amountFormatted(),
+                'amount_cents'     => $t->amount_cents,
+                'status'           => $t->status,
+                'description'      => $t->description,
+                'paypal_reference' => $t->paypal_reference,
+                'created_at'       => $t->created_at->toIso8601String(),
+            ]);
+
+        return response()->json(['transactions' => $transactions]);
+    }
+
+    // ─── Invoice download ─────────────────────────────────────────────────────
+
+    public function invoice(Request $request, string $id)
+    {
+        $transaction = Transaction::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->with('user')
+            ->firstOrFail();
+
+        $invoiceNumber = strtoupper(substr($transaction->id, 0, 8));
+
+        $pdf = app('dompdf.wrapper');
+        $pdf->loadView('invoices.invoice', compact('transaction', 'invoiceNumber'));
+        $pdf->setPaper('A4');
+
+        return $pdf->download("invoice-{$invoiceNumber}.pdf");
     }
 
     // ─── Cancel subscription ──────────────────────────────────────────────────

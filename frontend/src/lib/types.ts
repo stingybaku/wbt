@@ -113,6 +113,18 @@ export type BillingSlot = {
   seats_limit: number;
 };
 
+export type BillingTransaction = {
+  id: string;
+  plan_name: string;
+  plan_type: 'one_time' | 'subscription';
+  amount_formatted: string;
+  amount_cents: number;
+  status: 'completed' | 'refunded';
+  description: string | null;
+  paypal_reference: string | null;
+  created_at: string;
+};
+
 export type BillingSubscription = {
   id: string;
   plan: Pick<Plan, 'id' | 'name' | 'type' | 'module_limit' | 'seat_limit' | 'billing_period' | 'rollover'>;

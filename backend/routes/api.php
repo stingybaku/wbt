@@ -63,6 +63,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/billing/checkout',         [BillingController::class, 'checkout']);
     Route::post('/billing/capture-order',    [BillingController::class, 'captureOrder']);
     Route::post('/billing/cancel',           [BillingController::class, 'cancel']);
+    Route::get('/billing/transactions',      [BillingController::class, 'transactions']);
+    Route::get('/billing/transactions/{id}/invoice', [BillingController::class, 'invoice']);
 
     // Notifications
     Route::get('/notifications',                    [NotificationsController::class, 'index']);

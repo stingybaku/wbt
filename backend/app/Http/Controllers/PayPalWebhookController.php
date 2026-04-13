@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\PurchaseConfirmationMail;
 use App\Models\Subscription;
+use App\Models\Transaction;
 use App\Services\PayPalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class PayPalWebhookController extends Controller
 {
@@ -68,8 +71,13 @@ class PayPalWebhookController extends Controller
         $subscriptionId = $resource['id'] ?? null;
         if (!$subscriptionId) return;
 
-        $subscription = Subscription::where('paypal_subscription_id', $subscriptionId)->first();
+        $subscription = Subscription::where('paypal_subscription_id', $subscriptionId)
+            ->with('plan', 'user')
+            ->first();
         if (!$subscription) return;
+
+        // Idempotent — only record once
+        if ($subscription->status === 'active') return;
 
         $periodStart = isset($resource['billing_info']['last_payment']['time'])
             ? now()->parse($resource['billing_info']['last_payment']['time'])
@@ -79,11 +87,27 @@ class PayPalWebhookController extends Controller
             ? now()->parse($resource['billing_info']['next_billing_time'])
             : null;
 
+        $amountCents = (int) round(
+            (float) ($resource['billing_info']['last_payment']['amount']['value'] ?? $subscription->plan->price_cents / 100) * 100
+        );
+
         $subscription->update([
             'status'               => 'active',
             'current_period_start' => $periodStart,
             'current_period_end'   => $nextBilling,
         ]);
+
+        $transaction = Transaction::create([
+            'user_id'          => $subscription->user_id,
+            'subscription_id'  => $subscription->id,
+            'plan_name'        => $subscription->plan->name,
+            'plan_type'        => $subscription->plan->type,
+            'amount_cents'     => $amountCents,
+            'paypal_reference' => $subscriptionId,
+            'description'      => 'Subscription activated',
+        ]);
+        $transaction->load('user');
+        Mail::to($subscription->user->email)->queue(new PurchaseConfirmationMail($transaction));
     }
 
     private function handleSubscriptionCancelled(array $resource): void
@@ -107,12 +131,18 @@ class PayPalWebhookController extends Controller
         $subscriptionId = $resource['id'] ?? null;
         if (!$subscriptionId) return;
 
-        $subscription = Subscription::where('paypal_subscription_id', $subscriptionId)->first();
+        $subscription = Subscription::where('paypal_subscription_id', $subscriptionId)
+            ->with('plan', 'user')
+            ->first();
         if (!$subscription) return;
 
         $nextBilling = isset($resource['billing_info']['next_billing_time'])
             ? now()->parse($resource['billing_info']['next_billing_time'])
             : null;
+
+        $amountCents = (int) round(
+            (float) ($resource['billing_info']['last_payment']['amount']['value'] ?? $subscription->plan->price_cents / 100) * 100
+        );
 
         // Roll over unused modules if the plan supports it
         $rolled = 0;
@@ -126,6 +156,16 @@ class PayPalWebhookController extends Controller
             'current_period_end'   => $nextBilling,
             'modules_used'         => 0,
             'modules_rolled_over'  => $rolled,
+        ]);
+
+        Transaction::create([
+            'user_id'          => $subscription->user_id,
+            'subscription_id'  => $subscription->id,
+            'plan_name'        => $subscription->plan->name,
+            'plan_type'        => $subscription->plan->type,
+            'amount_cents'     => $amountCents,
+            'paypal_reference' => $subscriptionId,
+            'description'      => 'Subscription renewal',
         ]);
     }
 }

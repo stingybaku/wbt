@@ -4,11 +4,13 @@ import { useAuth } from '../context/AuthContext';
 import {
   cancelSubscription,
   captureOrder,
+  downloadInvoice,
   fetchBillingPlans,
   fetchCurrentSubscription,
+  fetchTransactions,
   startCheckout,
 } from '../lib/api';
-import type { BillingSlot, BillingSubscription, Plan } from '../lib/types';
+import type { BillingSlot, BillingSubscription, BillingTransaction, Plan } from '../lib/types';
 
 // ─── Billing page ─────────────────────────────────────────────────────────────
 
@@ -17,21 +19,37 @@ export function BillingView() {
 
   const [plans, setPlans] = useState<Plan[]>([]);
   const [subscription, setSubscription] = useState<BillingSubscription | null | undefined>(undefined);
+  const [transactions, setTransactions] = useState<BillingTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [invoiceLoading, setInvoiceLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
-    Promise.all([fetchBillingPlans(token), fetchCurrentSubscription(token)])
-      .then(([plansRes, subRes]) => {
+    Promise.all([fetchBillingPlans(token), fetchCurrentSubscription(token), fetchTransactions(token)])
+      .then(([plansRes, subRes, txRes]) => {
         setPlans(plansRes.plans);
         setSubscription(subRes.subscription);
+        setTransactions(txRes.transactions);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [token]);
+
+  async function handleDownloadInvoice(tx: BillingTransaction) {
+    if (!token) return;
+    setInvoiceLoading(tx.id);
+    try {
+      const invoiceNum = tx.id.slice(0, 8).toUpperCase();
+      await downloadInvoice(token, tx.id, `invoice-${invoiceNum}.pdf`);
+    } catch {
+      setError('Failed to download invoice. Please try again.');
+    } finally {
+      setInvoiceLoading(null);
+    }
+  }
 
   async function handleCheckout(planId: string) {
     if (!token) return;
@@ -149,6 +167,54 @@ export function BillingView() {
           />
         ))}
       </div>
+
+      {/* Transaction history */}
+      <h2 className="billing-plans-heading">Transaction History</h2>
+      {transactions.length === 0 ? (
+        <p className="billing-no-transactions">No transactions yet.</p>
+      ) : (
+        <div className="billing-transactions card">
+          <table className="transactions-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Plan</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.map((tx) => (
+                <tr key={tx.id}>
+                  <td className="tx-date">
+                    {new Date(tx.created_at).toLocaleDateString(undefined, {
+                      year: 'numeric', month: 'short', day: 'numeric',
+                    })}
+                  </td>
+                  <td className="tx-plan">{tx.plan_name}</td>
+                  <td className="tx-desc">{tx.description ?? (tx.plan_type === 'one_time' ? 'One-time purchase' : 'Subscription')}</td>
+                  <td className="tx-amount">{tx.amount_formatted}</td>
+                  <td>
+                    <span className={`tx-status tx-status--${tx.status}`}>{tx.status}</span>
+                  </td>
+                  <td className="tx-actions">
+                    <button
+                      type="button"
+                      className="ghost tx-invoice-btn"
+                      onClick={() => handleDownloadInvoice(tx)}
+                      disabled={invoiceLoading === tx.id}
+                    >
+                      {invoiceLoading === tx.id ? 'Downloading…' : 'Invoice ↓'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

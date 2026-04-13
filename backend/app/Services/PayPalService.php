@@ -89,7 +89,12 @@ class PayPalService
      */
     public function captureOrder(string $orderId): array
     {
-        $response = $this->client()->post("{$this->baseUrl}/v2/checkout/orders/{$orderId}/capture");
+        // PayPal's capture endpoint requires Content-Type: application/json with a valid body.
+        // withBody('{}') sends an explicit empty JSON object, bypassing Guzzle's serialization.
+        $response = Http::withToken($this->accessToken())
+            ->withBody('{}', 'application/json')
+            ->acceptJson()
+            ->post("{$this->baseUrl}/v2/checkout/orders/{$orderId}/capture");
 
         if (!$response->successful()) {
             throw new \RuntimeException('PayPal captureOrder failed: ' . $response->body());
