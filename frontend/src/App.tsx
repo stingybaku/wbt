@@ -3,6 +3,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { TopNav } from './components/TopNav';
 import { LoginForm } from './components/LoginForm';
 import { RegisterForm } from './components/RegisterForm';
+import { ForgotPasswordPage } from './components/ForgotPasswordPage';
+import { ResetPasswordPage } from './components/ResetPasswordPage';
 import { ChangePasswordPage } from './components/ChangePasswordPage';
 import { ProjectsView } from './components/ProjectsView';
 import { ProjectDetailView } from './components/ProjectDetailView';
@@ -53,6 +55,7 @@ function LoginPage() {
 
   if (token) return <Navigate to="/projects" replace />;
 
+  const justReset = searchParams.get('reset') === '1';
   const justVerified = searchParams.get('verified') === '1';
   const alreadyVerified = searchParams.get('verified') === 'already';
   const verifyError = searchParams.get('verified') === 'error';
@@ -95,6 +98,7 @@ function LoginPage() {
 
   return (
     <main className="app-shell auth-shell">
+      {justReset && <div className="success-banner">Password reset successfully. You can now sign in.</div>}
       {justVerified && <div className="success-banner">Email verified! You can now sign in.</div>}
       {alreadyVerified && <div className="success-banner">Your email is already verified. Please sign in.</div>}
       {verifyError && <div className="error-banner">Verification link is invalid or has expired. Please request a new one.</div>}
@@ -195,6 +199,8 @@ function ProjectsPage() {
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   { path: '/view/:token', element: <ViewerPlayerPage /> },
   {
     element: <RequireAuth />,

@@ -69,6 +69,9 @@ export function LoginForm({ loading, onSubmit }: LoginFormProps) {
         </button>
 
         <p className="login-meta">
+          <Link to="/forgot-password">{t('auth.forgot_password', 'Forgot your password?')}</Link>
+        </p>
+        <p className="login-meta">
           {t('auth.signup_prompt', 'Do not have an account?')} <Link to="/register">{t('auth.signup_cta', 'Sign Up Now')}</Link>
         </p>
       </section>

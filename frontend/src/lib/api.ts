@@ -67,6 +67,20 @@ export function resendVerification(email: string): Promise<{ message: string }> 
   });
 }
 
+export function forgotPassword(email: string): Promise<{ message: string }> {
+  return request<{ message: string }>('/auth/forgot-password', {
+    method: 'POST',
+    body: { email },
+  });
+}
+
+export function resetPassword(token: string, email: string, password: string, passwordConfirmation: string): Promise<{ message: string }> {
+  return request<{ message: string }>('/auth/reset-password', {
+    method: 'POST',
+    body: { token, email, password, password_confirmation: passwordConfirmation },
+  });
+}
+
 export function logout(token: string): Promise<{ ok: boolean }> {
   return request<{ ok: boolean }>('/auth/logout', { method: 'POST', token });
 }
