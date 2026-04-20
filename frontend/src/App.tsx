@@ -55,6 +55,7 @@ function LoginPage() {
 
   const justVerified = searchParams.get('verified') === '1';
   const alreadyVerified = searchParams.get('verified') === 'already';
+  const verifyError = searchParams.get('verified') === 'error';
 
   async function handleLogin(email: string, password: string) {
     setLoading(true);
@@ -96,6 +97,7 @@ function LoginPage() {
     <main className="app-shell auth-shell">
       {justVerified && <div className="success-banner">Email verified! You can now sign in.</div>}
       {alreadyVerified && <div className="success-banner">Your email is already verified. Please sign in.</div>}
+      {verifyError && <div className="error-banner">Verification link is invalid or has expired. Please request a new one.</div>}
       {error && !justVerified && (
         <div className="error-banner">
           {error}

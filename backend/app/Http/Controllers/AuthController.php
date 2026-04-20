@@ -9,7 +9,6 @@ use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\URL;
 
 class AuthController extends Controller
 {
@@ -76,16 +75,18 @@ class AuthController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function verifyEmail(Request $request, int $id, string $hash)
+    public function verifyEmail(Request $request)
     {
-        $user = User::findOrFail($id);
+        $token = $request->query('token');
 
-        if (!hash_equals(sha1($user->email), $hash)) {
-            return response()->json(['message' => 'Invalid verification link.'], 403);
+        if (!$token) {
+            return redirect(config('app.frontend_url') . '/login?verified=error');
         }
 
-        if (!$request->hasValidSignature()) {
-            return response()->json(['message' => 'Verification link has expired.'], 403);
+        $user = User::where('email_verification_token', $token)->first();
+
+        if (!$user) {
+            return redirect(config('app.frontend_url') . '/login?verified=error');
         }
 
         if ($user->hasVerifiedEmail()) {
@@ -93,6 +94,7 @@ class AuthController extends Controller
         }
 
         $user->markEmailAsVerified();
+        $user->update(['email_verification_token' => null]);
         event(new Verified($user));
 
         return redirect(config('app.frontend_url') . '/login?verified=1');
@@ -105,7 +107,6 @@ class AuthController extends Controller
         $user = User::where('email', $data['email'])->first();
 
         if (!$user) {
-            // Don't reveal whether the email exists
             return response()->json(['message' => 'If that email is registered, a verification link has been sent.']);
         }
 

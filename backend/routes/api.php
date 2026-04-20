@@ -19,7 +19,7 @@ use App\Http\Controllers\ViewerController;
 
 Route::post('/auth/register',                       [AuthController::class, 'register']);
 Route::post('/auth/login',                          [AuthController::class, 'login']);
-Route::get('/auth/verify-email/{id}/{hash}',        [AuthController::class, 'verifyEmail'])->name('verification.verify')->middleware('signed');
+Route::get('/auth/verify-email',                    [AuthController::class, 'verifyEmail'])->name('verification.verify');
 Route::post('/auth/resend-verification',            [AuthController::class, 'resendVerification']);
 Route::get('/frontend-texts', [FrontendTextController::class, 'index']);
 

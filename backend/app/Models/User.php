@@ -28,6 +28,7 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         'password',
         'role_id',
         'must_change_password',
+        'email_verification_token',
     ];
 
     /**
@@ -56,7 +57,9 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 
     public function sendEmailVerificationNotification(): void
     {
-        $this->notify(new VerifyEmailNotification());
+        $token = \Illuminate\Support\Str::random(64);
+        $this->update(['email_verification_token' => $token]);
+        $this->notify(new VerifyEmailNotification($token));
     }
 
     public function role(): BelongsTo
