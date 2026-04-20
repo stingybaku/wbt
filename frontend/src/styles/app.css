@@ -1607,6 +1607,48 @@ button.ghost:hover:not(:disabled) {
   z-index: 9999;
 }
 
+.success-banner {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  max-width: min(560px, calc(100vw - 2rem));
+  background: color-mix(in srgb, #10b981 15%, transparent);
+  border: 1px solid #10b981;
+  color: #065f46;
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  z-index: 9999;
+}
+
+.inline-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
+
+.auth-success-card {
+  max-width: 480px;
+  margin: 6rem auto;
+  padding: 2.5rem;
+  text-align: center;
+}
+
+.auth-success-card h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.auth-success-card p {
+  color: var(--text-2);
+  line-height: 1.7;
+}
+
 /* ── Generating indicator ─────────────────────────────────────────────────── */
 
 .generating-indicator {

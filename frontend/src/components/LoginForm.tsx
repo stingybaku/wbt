@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { fetchFrontendTexts } from '../lib/api';
 import { createTextResolver, type FrontendTextMap } from '../lib/text';
 
@@ -68,16 +69,8 @@ export function LoginForm({ loading, onSubmit }: LoginFormProps) {
         </button>
 
         <p className="login-meta">
-          {t('auth.signup_prompt', 'Do not have an account?')} <a href="#">{t('auth.signup_cta', 'Sign Up Now')}</a>
+          {t('auth.signup_prompt', 'Do not have an account?')} <Link to="/register">{t('auth.signup_cta', 'Sign Up Now')}</Link>
         </p>
-        <p className="login-divider">{t('auth.divider_text', 'OR')}</p>
-        <p className="login-social-label">{t('auth.social_prompt', 'Continue with social media')}</p>
-        <div className="login-socials" aria-hidden="true">
-          <span>f</span>
-          <span>t</span>
-          <span>g+</span>
-          <span>in</span>
-        </div>
       </section>
 
       <aside className="login-promo" aria-hidden="true">

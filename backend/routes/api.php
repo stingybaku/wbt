@@ -17,7 +17,10 @@ use App\Http\Controllers\UnsplashController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ViewerController;
 
-Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/register',                       [AuthController::class, 'register']);
+Route::post('/auth/login',                          [AuthController::class, 'login']);
+Route::get('/auth/verify-email/{id}/{hash}',        [AuthController::class, 'verifyEmail'])->name('verification.verify')->middleware('signed');
+Route::post('/auth/resend-verification',            [AuthController::class, 'resendVerification']);
 Route::get('/frontend-texts', [FrontendTextController::class, 'index']);
 
 // Public viewer routes (token-gated, no auth required)
