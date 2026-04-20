@@ -53,6 +53,13 @@ class UserResource extends Resource
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('email')->searchable()->sortable(),
                 TextColumn::make('role.name')->label('Role')->badge()->sortable(),
+                TextColumn::make('email_verified_at')
+                    ->label('Verified At')
+                    ->dateTime()
+                    ->sortable()
+                    ->placeholder('Not verified')
+                    ->icon(fn ($state) => $state ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle')
+                    ->color(fn ($state) => $state ? 'success' : 'danger'),
                 TextColumn::make('created_at')->dateTime()->sortable(),
             ])
             ->actions([
