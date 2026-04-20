@@ -468,6 +468,15 @@ button.ghost:hover:not(:disabled) {
 
 /* ── Login ────────────────────────────────────────────────────────────────── */
 
+.login-card--narrow {
+  grid-template-columns: 1fr !important;
+  width: min(480px, 100%);
+}
+
+.login-card--narrow .login-promo {
+  display: none;
+}
+
 .login-card {
   width: min(1020px, 100%);
   padding: 0;
