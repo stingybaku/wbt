@@ -46,10 +46,24 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return response.json() as Promise<T>;
 }
 
+export function register(name: string, email: string, password: string, passwordConfirmation: string): Promise<{ message: string }> {
+  return request<{ message: string }>('/auth/register', {
+    method: 'POST',
+    body: { name, email, password, password_confirmation: passwordConfirmation },
+  });
+}
+
 export function login(email: string, password: string): Promise<LoginResponse> {
   return request<LoginResponse>('/auth/login', {
     method: 'POST',
     body: { email, password },
+  });
+}
+
+export function resendVerification(email: string): Promise<{ message: string }> {
+  return request<{ message: string }>('/auth/resend-verification', {
+    method: 'POST',
+    body: { email },
   });
 }
 
