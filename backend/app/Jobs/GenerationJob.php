@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Event;
 use App\Models\Module;
 use App\Models\Project;
+use App\Models\Subscription;
 use App\Notifications\GenerationCompleteNotification;
 use Illuminate\Support\Str;
 use App\Notifications\GenerationFailedNotification;
@@ -65,6 +66,13 @@ class GenerationJob implements ShouldQueue
                 'generation_error' => null,
                 'cover_image_url'  => $this->extractCoverImage($moduleJson),
             ]);
+
+            // Increment modules_used on the active subscription
+            Subscription::where('user_id', $project->user_id)
+                ->where('status', 'active')
+                ->latest()
+                ->first()
+                ?->increment('modules_used');
 
             $project->user->notify(new GenerationCompleteNotification($project));
 

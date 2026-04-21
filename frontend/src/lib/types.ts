@@ -91,3 +91,49 @@ export type NotificationsResponse = {
   notifications: AppNotification[];
   unread_count: number;
 };
+
+// ─── Billing ──────────────────────────────────────────────────────────────────
+
+export type Plan = {
+  id: string;
+  name: string;
+  type: 'one_time' | 'subscription';
+  price_cents: number;
+  billing_period: 'monthly' | 'annual' | null;
+  module_limit: number;
+  seat_limit: number;
+  rollover: boolean;
+  paypal_plan_id: string | null;
+};
+
+export type BillingSlot = {
+  id: string | null;
+  title: string | null;
+  seats_used: number;
+  seats_limit: number;
+};
+
+export type BillingTransaction = {
+  id: string;
+  plan_name: string;
+  plan_type: 'one_time' | 'subscription';
+  amount_formatted: string;
+  amount_cents: number;
+  status: 'completed' | 'refunded';
+  description: string | null;
+  payment_reference: string | null;
+  created_at: string;
+};
+
+export type BillingSubscription = {
+  id: string;
+  plan: Pick<Plan, 'id' | 'name' | 'type' | 'module_limit' | 'seat_limit' | 'billing_period' | 'rollover'>;
+  status: 'active' | 'pending' | 'cancelled';
+  modules_used: number;
+  modules_available: number;
+  seats_used: number;
+  seats_available: number;
+  current_period_end: string | null;
+  cancelled_at: string | null;
+  slots?: BillingSlot[];
+};

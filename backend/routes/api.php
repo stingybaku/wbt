@@ -15,8 +15,12 @@ use App\Http\Controllers\ScormController;
 use App\Http\Controllers\PexelsController;
 use App\Http\Controllers\UnsplashController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\BillingController;
+use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\ViewerController;
 
+Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);
 use App\Http\Controllers\PasswordResetController;
 
 Route::post('/auth/register',                       [AuthController::class, 'register']);
@@ -41,7 +45,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/projects/{id}', [ProjectsController::class, 'show']);
     Route::post('/projects/{id}/source', [ProjectSourceController::class, 'store']);
 
-    Route::post('/projects/{id}/module/generate', [ModuleController::class, 'generate']);
+    Route::post('/projects/{id}/module/generate', [ModuleController::class, 'generate'])->middleware('quota:module');
     Route::get('/projects/{id}/module', [ModuleController::class, 'show']);
     Route::put('/projects/{id}/module', [ModuleController::class, 'update']);
     Route::post('/projects/{id}/module/flags', [ModuleFlagsController::class, 'store']);
@@ -57,9 +61,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Invites
     Route::get('/projects/{id}/invites',                                    [ProjectInvitesController::class, 'index']);
-    Route::post('/projects/{id}/invites',                                   [ProjectInvitesController::class, 'store']);
+    Route::post('/projects/{id}/invites',                                   [ProjectInvitesController::class, 'store'])->middleware('quota:seat');
     Route::delete('/projects/{id}/invites/{inviteId}',                      [ProjectInvitesController::class, 'revoke']);
     Route::get('/projects/{id}/invites/{inviteId}/certificate',             [ProjectInvitesController::class, 'certificate']);
+
+    // Billing
+    Route::get('/billing/plans',             [BillingController::class, 'plans']);
+    Route::get('/billing/current',           [BillingController::class, 'current']);
+    Route::post('/billing/checkout',         [BillingController::class, 'checkout']);
+    Route::post('/billing/cancel',           [BillingController::class, 'cancel']);
+    Route::get('/billing/transactions',      [BillingController::class, 'transactions']);
+    Route::get('/billing/transactions/{id}/invoice', [BillingController::class, 'invoice']);
 
     // Notifications
     Route::get('/notifications',                    [NotificationsController::class, 'index']);
