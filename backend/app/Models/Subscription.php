@@ -12,7 +12,7 @@ class Subscription extends Model
 
     protected $fillable = [
         'id', 'user_id', 'plan_id', 'status',
-        'paypal_order_id', 'paypal_subscription_id',
+        'paypal_order_id', 'paypal_subscription_id', 'stripe_session_id',
         'modules_used', 'modules_rolled_over', 'bonus_modules', 'bonus_seats',
         'current_period_start', 'current_period_end',
         'cancelled_at',
