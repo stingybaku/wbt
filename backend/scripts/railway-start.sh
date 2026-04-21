@@ -142,6 +142,4 @@ php artisan config:clear
 php artisan cache:clear || true
 php artisan package:discover --ansi
 
-php artisan queue:work --tries=1 --timeout=720 --sleep=3 --max-time=3600 &
-
 exec php artisan serve --host=0.0.0.0 --port="${PORT:-8080}"
