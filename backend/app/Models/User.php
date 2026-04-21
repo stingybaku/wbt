@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\ResetPasswordNotification;
+use App\Notifications\VerifyEmailNotification;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,7 +14,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
@@ -28,6 +30,7 @@ class User extends Authenticatable implements FilamentUser
         'password',
         'role_id',
         'must_change_password',
+        'email_verification_token',
     ];
 
     /**
@@ -57,6 +60,17 @@ class User extends Authenticatable implements FilamentUser
     public function subscription(): HasOne
     {
         return $this->hasOne(Subscription::class)->where('status', 'active')->latestOfMany();
+    }
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        $token = \Illuminate\Support\Str::random(64);
+        $this->update(['email_verification_token' => $token]);
+        $this->notify(new VerifyEmailNotification($token));
     }
 
     public function role(): BelongsTo

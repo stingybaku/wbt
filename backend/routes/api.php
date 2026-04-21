@@ -21,6 +21,14 @@ use App\Http\Controllers\ViewerController;
 
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);
+use App\Http\Controllers\PasswordResetController;
+
+Route::post('/auth/register',                       [AuthController::class, 'register']);
+Route::post('/auth/login',                          [AuthController::class, 'login']);
+Route::get('/auth/verify-email',                    [AuthController::class, 'verifyEmail'])->name('verification.verify');
+Route::post('/auth/resend-verification',            [AuthController::class, 'resendVerification']);
+Route::post('/auth/forgot-password',               [PasswordResetController::class, 'sendResetLink']);
+Route::post('/auth/reset-password',                [PasswordResetController::class, 'reset']);
 Route::get('/frontend-texts', [FrontendTextController::class, 'index']);
 
 // Public viewer routes (token-gated, no auth required)

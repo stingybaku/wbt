@@ -71,10 +71,38 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return response.json() as Promise<T>;
 }
 
+export function register(name: string, email: string, password: string, passwordConfirmation: string): Promise<{ message: string }> {
+  return request<{ message: string }>('/auth/register', {
+    method: 'POST',
+    body: { name, email, password, password_confirmation: passwordConfirmation },
+  });
+}
+
 export function login(email: string, password: string): Promise<LoginResponse> {
   return request<LoginResponse>('/auth/login', {
     method: 'POST',
     body: { email, password },
+  });
+}
+
+export function resendVerification(email: string): Promise<{ message: string }> {
+  return request<{ message: string }>('/auth/resend-verification', {
+    method: 'POST',
+    body: { email },
+  });
+}
+
+export function forgotPassword(email: string): Promise<{ message: string }> {
+  return request<{ message: string }>('/auth/forgot-password', {
+    method: 'POST',
+    body: { email },
+  });
+}
+
+export function resetPassword(token: string, email: string, password: string, passwordConfirmation: string): Promise<{ message: string }> {
+  return request<{ message: string }>('/auth/reset-password', {
+    method: 'POST',
+    body: { token, email, password, password_confirmation: passwordConfirmation },
   });
 }
 
