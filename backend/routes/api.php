@@ -29,6 +29,7 @@ Route::get('/auth/verify-email',                    [AuthController::class, 'ver
 Route::post('/auth/resend-verification',            [AuthController::class, 'resendVerification']);
 Route::post('/auth/forgot-password',               [PasswordResetController::class, 'sendResetLink']);
 Route::post('/auth/reset-password',                [PasswordResetController::class, 'reset']);
+Route::post('/webhooks/stripe',                    [StripeWebhookController::class, 'handle']);
 Route::get('/frontend-texts', [FrontendTextController::class, 'index']);
 
 // Public viewer routes (token-gated, no auth required)

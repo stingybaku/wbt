@@ -12,11 +12,12 @@ class Plan extends Model
 
     protected $fillable = [
         'id', 'name', 'type', 'price_cents', 'billing_period',
-        'module_limit', 'seat_limit', 'rollover', 'paypal_plan_id',
+        'module_limit', 'seat_limit', 'rollover', 'paypal_plan_id', 'is_active',
     ];
 
     protected $casts = [
-        'rollover' => 'boolean',
+        'rollover'  => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     public function subscriptions(): HasMany

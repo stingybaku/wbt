@@ -19,7 +19,7 @@ class BillingController extends Controller
     public function plans()
     {
         return response()->json([
-            'plans' => Plan::all(),
+            'plans' => Plan::where('is_active', true)->get(),
         ]);
     }
 

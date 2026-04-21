@@ -57,6 +57,18 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         ];
     }
 
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        $token = \Illuminate\Support\Str::random(64);
+        $this->update(['email_verification_token' => $token]);
+        $this->notify(new VerifyEmailNotification($token));
+    }
+
     public function subscription(): HasOne
     {
         return $this->hasOne(Subscription::class)->where('status', 'active')->latestOfMany();
