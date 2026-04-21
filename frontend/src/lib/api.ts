@@ -47,8 +47,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   });
 
   if (response.status === 401) {
-    unauthorizedHandler?.();
-    throw new Error('Session expired. Please log in again.');
+    if (options.token) {
+      unauthorizedHandler?.();
+      throw new Error('Session expired. Please log in again.');
+    }
+    const json = await response.json().catch(() => ({})) as { message?: string };
+    throw new Error(json.message || 'Invalid credentials.');
   }
 
   if (response.status === 402) {
