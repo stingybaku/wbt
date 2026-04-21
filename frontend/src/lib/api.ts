@@ -300,19 +300,11 @@ export function fetchCurrentSubscription(token: string): Promise<{ subscription:
   return request<{ subscription: BillingSubscription | null }>('/billing/current', { token });
 }
 
-export function startCheckout(token: string, planId: string): Promise<{ approval_url: string }> {
-  return request<{ approval_url: string }>('/billing/checkout', {
+export function startCheckout(token: string, planId: string): Promise<{ checkout_url: string }> {
+  return request<{ checkout_url: string }>('/billing/checkout', {
     method: 'POST',
     token,
     body: { plan_id: planId },
-  });
-}
-
-export function captureOrder(token: string, orderId: string): Promise<{ subscription: BillingSubscription }> {
-  return request<{ subscription: BillingSubscription }>('/billing/capture-order', {
-    method: 'POST',
-    token,
-    body: { order_id: orderId },
   });
 }
 

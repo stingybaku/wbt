@@ -101,6 +101,11 @@ if [ -n "${MAIL_FROM_NAME:-}" ]; then upsert_env "MAIL_FROM_NAME" "${MAIL_FROM_N
 # Persist queue connection.
 if [ -n "${QUEUE_CONNECTION:-}" ]; then upsert_env "QUEUE_CONNECTION" "${QUEUE_CONNECTION}"; fi
 
+# Persist Stripe keys.
+if [ -n "${STRIPE_SECRET:-}" ]; then upsert_env "STRIPE_SECRET" "${STRIPE_SECRET}"; fi
+if [ -n "${STRIPE_PUBLISHABLE_KEY:-}" ]; then upsert_env "STRIPE_PUBLISHABLE_KEY" "${STRIPE_PUBLISHABLE_KEY}"; fi
+if [ -n "${STRIPE_WEBHOOK_SECRET:-}" ]; then upsert_env "STRIPE_WEBHOOK_SECRET" "${STRIPE_WEBHOOK_SECRET}"; fi
+
 # Persist AI / media keys.
 if [ -n "${ANTHROPIC_API_KEY:-}" ]; then upsert_env "ANTHROPIC_API_KEY" "${ANTHROPIC_API_KEY}"; fi
 if [ -n "${ANTHROPIC_MODEL:-}" ]; then upsert_env "ANTHROPIC_MODEL" "${ANTHROPIC_MODEL}"; fi

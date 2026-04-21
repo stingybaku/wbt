@@ -121,7 +121,7 @@ export type BillingTransaction = {
   amount_cents: number;
   status: 'completed' | 'refunded';
   description: string | null;
-  paypal_reference: string | null;
+  payment_reference: string | null;
   created_at: string;
 };
 

@@ -2,19 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\PurchaseConfirmationMail;
 use App\Models\Plan;
 use App\Models\Project;
 use App\Models\Subscription;
 use App\Models\Transaction;
-use App\Services\PayPalService;
+use App\Services\StripeService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class BillingController extends Controller
 {
-    public function __construct(private PayPalService $paypal) {}
+    public function __construct(private StripeService $stripe) {}
 
     // ─── Plans ────────────────────────────────────────────────────────────────
 
@@ -44,125 +42,33 @@ class BillingController extends Controller
             'plan_id' => 'required|string|exists:plans,id',
         ]);
 
-        $plan    = Plan::findOrFail($data['plan_id']);
-        $user    = $request->user();
+        $plan        = Plan::findOrFail($data['plan_id']);
+        $user        = $request->user();
         $frontendUrl = config('app.frontend_url', config('app.url'));
 
-        $returnUrl = $frontendUrl . '/billing/success';
-        $cancelUrl = $frontendUrl . '/billing/cancel';
-
-        if ($plan->isOneTime()) {
-            $result = $this->paypal->createOrder($plan->id, $returnUrl, $cancelUrl);
-
-            // Create a pending subscription record
-            Subscription::create([
-                'id'                    => 'sub_' . Str::uuid(),
-                'user_id'               => $user->id,
-                'plan_id'               => $plan->id,
-                'status'                => 'pending',
-                'paypal_order_id'       => $result['order_id'],
-                'current_period_start'  => now(),
-                'current_period_end'    => null, // one-time, no expiry
-            ]);
-
-            return response()->json(['approval_url' => $result['approval_url']]);
+        if (!$plan->isOneTime()) {
+            return response()->json(['message' => 'Subscription plans are not yet available.'], 422);
         }
 
-        // Subscription plan
-        if (!$plan->paypal_plan_id) {
-            return response()->json(['message' => 'This plan is not yet available for purchase.'], 422);
-        }
-
-        $result = $this->paypal->createSubscription($plan->paypal_plan_id, $returnUrl, $cancelUrl);
-
-        Subscription::create([
-            'id'                      => 'sub_' . Str::uuid(),
-            'user_id'                 => $user->id,
-            'plan_id'                 => $plan->id,
-            'status'                  => 'pending',
-            'paypal_subscription_id'  => $result['subscription_id'],
-        ]);
-
-        return response()->json(['approval_url' => $result['approval_url']]);
-    }
-
-    // ─── Capture one-time order (called after PayPal redirect) ────────────────
-
-    public function captureOrder(Request $request)
-    {
-        $data = $request->validate([
-            'order_id' => 'required|string',
-        ]);
-
-        $subscription = Subscription::where('paypal_order_id', $data['order_id'])
-            ->where('user_id', $request->user()->id)
-            ->first();
-
-        // Already processed (page refresh or double-submit) — return the active sub.
-        if (!$subscription || $subscription->status === 'captured') {
-            $active = $this->activeSubscription($request->user()->id);
-            if ($active) {
-                return response()->json(['subscription' => $this->formatSubscription($active)]);
-            }
-            return response()->json(['message' => 'Order not found or already processed.'], 404);
-        }
-
-        $capture = $this->paypal->captureOrder($data['order_id']);
-
-        if (($capture['status'] ?? '') !== 'COMPLETED') {
-            return response()->json(['message' => 'Payment not completed.'], 422);
-        }
-
-        // For one-time plans: stack bonus modules onto the existing active one-time subscription
-        // rather than activating a second record.
-        $existing = Subscription::where('user_id', $request->user()->id)
-            ->where('status', 'active')
-            ->whereHas('plan', fn ($q) => $q->where('type', 'one_time'))
-            ->latest()
-            ->first();
-
-        $amountCents = (int) round(
-            (float) ($capture['purchase_units'][0]['payments']['captures'][0]['amount']['value'] ?? $subscription->plan->price_cents / 100) * 100
+        $result = $this->stripe->createCheckoutSession(
+            $plan->name,
+            $plan->price_cents,
+            $frontendUrl . '/billing/success?session_id={CHECKOUT_SESSION_ID}',
+            $frontendUrl . '/billing/cancel',
+            $user->email
         );
 
-        if ($existing) {
-            $existing->increment('bonus_modules');
-            $existing->increment('bonus_seats', $subscription->plan->seat_limit);
-            $subscription->update(['status' => 'captured']); // keep for audit, never activate
-
-            $transaction = Transaction::create([
-                'user_id'         => $request->user()->id,
-                'subscription_id' => $existing->id,
-                'plan_name'       => $subscription->plan->name,
-                'plan_type'       => $subscription->plan->type,
-                'amount_cents'    => $amountCents,
-                'paypal_reference' => $data['order_id'],
-                'description'     => 'Additional module purchase',
-            ]);
-            $transaction->load('user');
-            Mail::to($request->user()->email)->queue(new PurchaseConfirmationMail($transaction));
-
-            return response()->json(['subscription' => $this->formatSubscription($existing->fresh())]);
-        }
-
-        $subscription->update([
-            'status'               => 'active',
+        Subscription::create([
+            'id'                   => 'sub_' . Str::uuid(),
+            'user_id'              => $user->id,
+            'plan_id'              => $plan->id,
+            'status'               => 'pending',
+            'stripe_session_id'    => $result['session_id'],
             'current_period_start' => now(),
             'current_period_end'   => null,
         ]);
 
-        $transaction = Transaction::create([
-            'user_id'         => $request->user()->id,
-            'subscription_id' => $subscription->id,
-            'plan_name'       => $subscription->plan->name,
-            'plan_type'       => $subscription->plan->type,
-            'amount_cents'    => $amountCents,
-            'paypal_reference' => $data['order_id'],
-        ]);
-        $transaction->load('user');
-        Mail::to($request->user()->email)->queue(new PurchaseConfirmationMail($transaction));
-
-        return response()->json(['subscription' => $this->formatSubscription($subscription->fresh())]);
+        return response()->json(['checkout_url' => $result['checkout_url']]);
     }
 
     // ─── Transaction history ──────────────────────────────────────────────────
@@ -180,7 +86,7 @@ class BillingController extends Controller
                 'amount_cents'     => $t->amount_cents,
                 'status'           => $t->status,
                 'description'      => $t->description,
-                'paypal_reference' => $t->paypal_reference,
+                'payment_reference' => $t->payment_reference,
                 'created_at'       => $t->created_at->toIso8601String(),
             ]);
 
@@ -213,10 +119,6 @@ class BillingController extends Controller
 
         if (!$subscription) {
             return response()->json(['message' => 'No active subscription.'], 404);
-        }
-
-        if ($subscription->paypal_subscription_id) {
-            $this->paypal->cancelSubscription($subscription->paypal_subscription_id);
         }
 
         $subscription->update([
@@ -260,9 +162,8 @@ class BillingController extends Controller
             'cancelled_at'       => $sub->cancelled_at?->toIso8601String(),
         ];
 
-        // For one-time plans, include per-project slot breakdown
         if ($sub->plan->isOneTime()) {
-            $seatLimit = $sub->plan->seat_limit; // 10 per slot
+            $seatLimit = $sub->plan->seat_limit;
 
             $projects = Project::where('user_id', $sub->user_id)
                 ->whereHas('module', fn ($q) => $q->where('status', 'generated'))
@@ -270,15 +171,14 @@ class BillingController extends Controller
                 ->orderBy('created_at')
                 ->get()
                 ->map(fn ($p) => [
-                    'id'         => $p->id,
-                    'title'      => $p->title,
-                    'seats_used' => $p->invites->count(),
+                    'id'          => $p->id,
+                    'title'       => $p->title,
+                    'seats_used'  => $p->invites->count(),
                     'seats_limit' => $seatLimit,
                 ])
                 ->values()
                 ->toArray();
 
-            // Pad with empty slots for unused purchased modules
             $totalSlots = $sub->modulesAvailable() + $sub->modules_used;
             $emptySlots = max(0, $totalSlots - count($projects));
             for ($i = 0; $i < $emptySlots; $i++) {

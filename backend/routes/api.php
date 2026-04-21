@@ -16,11 +16,11 @@ use App\Http\Controllers\PexelsController;
 use App\Http\Controllers\UnsplashController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\BillingController;
-use App\Http\Controllers\PayPalWebhookController;
+use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\ViewerController;
 
 Route::post('/auth/login', [AuthController::class, 'login']);
-Route::post('/webhooks/paypal', [PayPalWebhookController::class, 'handle']);
+Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);
 Route::get('/frontend-texts', [FrontendTextController::class, 'index']);
 
 // Public viewer routes (token-gated, no auth required)
@@ -61,7 +61,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/billing/plans',             [BillingController::class, 'plans']);
     Route::get('/billing/current',           [BillingController::class, 'current']);
     Route::post('/billing/checkout',         [BillingController::class, 'checkout']);
-    Route::post('/billing/capture-order',    [BillingController::class, 'captureOrder']);
     Route::post('/billing/cancel',           [BillingController::class, 'cancel']);
     Route::get('/billing/transactions',      [BillingController::class, 'transactions']);
     Route::get('/billing/transactions/{id}/invoice', [BillingController::class, 'invoice']);

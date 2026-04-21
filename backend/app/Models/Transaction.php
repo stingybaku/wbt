@@ -17,7 +17,7 @@ class Transaction extends Model
         'plan_type',
         'amount_cents',
         'currency',
-        'paypal_reference',
+        'payment_reference',
         'status',
         'description',
     ];

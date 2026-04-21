@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   cancelSubscription,
-  captureOrder,
   downloadInvoice,
   fetchBillingPlans,
   fetchCurrentSubscription,
@@ -57,7 +56,7 @@ export function BillingView() {
     setError(null);
     try {
       const res = await startCheckout(token, planId);
-      window.location.href = res.approval_url;
+      window.location.href = res.checkout_url;
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Checkout failed');
       setCheckoutLoading(null);
@@ -380,28 +379,32 @@ export function BillingSuccessPage() {
   const { token } = useAuth();
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading');
-  const [message, setMessage] = useState('');
 
   useEffect(() => {
     if (!token) return;
 
-    const params = new URLSearchParams(window.location.search);
-    const orderId = params.get('token'); // PayPal one-time order token
-    const subscriptionId = params.get('subscription_id'); // PayPal subscription
+    // Poll for the subscription to become active (webhook activates it asynchronously)
+    let attempts = 0;
+    const maxAttempts = 20;
+    const interval = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetchCurrentSubscription(token);
+        if (res.subscription?.status === 'active') {
+          clearInterval(interval);
+          setStatus('ok');
+        } else if (attempts >= maxAttempts) {
+          clearInterval(interval);
+          // Webhook may still be in flight — show success anyway
+          setStatus('ok');
+        }
+      } catch {
+        clearInterval(interval);
+        setStatus('error');
+      }
+    }, 1500);
 
-    if (orderId) {
-      // One-time purchase — capture the order
-      captureOrder(token, orderId)
-        .then(() => { setStatus('ok'); setMessage('Payment confirmed! Your plan is now active.'); })
-        .catch((e: Error) => { setStatus('error'); setMessage(e.message); });
-    } else if (subscriptionId) {
-      // Recurring — PayPal will confirm via webhook; just show success
-      setStatus('ok');
-      setMessage('Subscription activated! Your plan is now active.');
-    } else {
-      setStatus('ok');
-      setMessage('Payment received. Your plan is being activated.');
-    }
+    return () => clearInterval(interval);
   }, [token]);
 
   return (
@@ -415,7 +418,7 @@ export function BillingSuccessPage() {
             </svg>
           </div>
           <h1>You're all set!</h1>
-          <p>{message}</p>
+          <p>Your plan is now active. Start building your first training module.</p>
           <button type="button" onClick={() => navigate('/billing')}>View my plan</button>
           <button type="button" className="ghost" onClick={() => navigate('/projects')}>Go to projects</button>
         </>
@@ -423,7 +426,7 @@ export function BillingSuccessPage() {
       {status === 'error' && (
         <>
           <h1>Something went wrong</h1>
-          <p>{message}</p>
+          <p>We could not confirm your payment. Please contact support if you were charged.</p>
           <button type="button" onClick={() => navigate('/billing')}>Back to billing</button>
         </>
       )}
