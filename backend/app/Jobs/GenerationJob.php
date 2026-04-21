@@ -135,7 +135,7 @@ class GenerationJob implements ShouldQueue
         // 2. Try Pexels first (higher free-tier rate limit)
         $pexelsResult = $this->pexels->searchPhoto($refined);
         if ($pexelsResult && !in_array($pexelsResult['url'], $usedUrls)) {
-            $this->cache->store(
+            $stored = $this->cache->store(
                 $refined,
                 'pexels',
                 $pexelsResult['external_id'],
@@ -143,9 +143,10 @@ class GenerationJob implements ShouldQueue
                 $pexelsResult['photographer'],
                 $pexelsResult['license']
             );
-            $usedUrls[] = $pexelsResult['url'];
+            $resolvedUrl = $stored->resolvedUrl();
+            $usedUrls[] = $resolvedUrl;
             return [
-                'url'          => $pexelsResult['url'],
+                'url'          => $resolvedUrl,
                 'alt_text'     => $refined,
                 'source'       => 'pexels',
                 'external_id'  => $pexelsResult['external_id'],
@@ -169,7 +170,7 @@ class GenerationJob implements ShouldQueue
                     $url = $photo['urls']['regular'];
                     if (in_array($url, $usedUrls)) continue;
 
-                    $this->cache->store(
+                    $stored = $this->cache->store(
                         $refined,
                         'unsplash',
                         $photo['id'],
@@ -177,9 +178,10 @@ class GenerationJob implements ShouldQueue
                         $photo['user']['name'],
                         'Unsplash License'
                     );
-                    $usedUrls[] = $url;
+                    $resolvedUrl = $stored->resolvedUrl();
+                    $usedUrls[] = $resolvedUrl;
                     return [
-                        'url'          => $url,
+                        'url'          => $resolvedUrl,
                         'alt_text'     => $photo['alt_description'] ?? $photo['description'] ?? $refined,
                         'source'       => 'unsplash',
                         'external_id'  => $photo['id'],

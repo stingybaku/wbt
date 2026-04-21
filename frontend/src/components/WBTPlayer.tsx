@@ -541,7 +541,12 @@ function ImageTextScreen({
 
   const imageEl = screen.image ? (
     <figure className="player-figure">
-      <img src={screen.image.url} alt={screen.image.alt_text} className="player-image" />
+      <img
+        src={screen.image.url}
+        alt={screen.image.alt_text}
+        className="player-image"
+        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+      />
       {attribution && (
         <figcaption className="player-attribution">
           Photo by{' '}
