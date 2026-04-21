@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\SourcedImage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ImageCacheService
 {
@@ -18,7 +20,6 @@ class ImageCacheService
     {
         $normalized = $this->normalize($query);
 
-        // Try semantic search first (requires embedding)
         $vector = $this->embedding->embed($normalized);
         if ($vector) {
             $literal = $this->embedding->toVectorLiteral($vector);
@@ -27,16 +28,14 @@ class ImageCacheService
                 ->orderBy('distance')
                 ->first();
 
-            if ($hit && $hit->distance < 0.18) { // cosine distance < 0.18 ≈ similarity > 0.82
+            if ($hit && $hit->distance < 0.18) {
                 return $hit;
             }
         }
 
-        // Fallback: exact topic match
         $hit = SourcedImage::where('topic', $normalized)->inRandomOrder()->first();
         if ($hit) return $hit;
 
-        // Fallback: keyword overlap
         $tokens = array_filter(explode(' ', $normalized));
         foreach ($tokens as $token) {
             $hit = SourcedImage::whereJsonContains('keywords', $token)->inRandomOrder()->first();
@@ -47,7 +46,7 @@ class ImageCacheService
     }
 
     /**
-     * Store a new image in the cache and generate its embedding asynchronously.
+     * Store a new image in the cache, download it to R2, and generate its embedding.
      */
     public function store(
         string $query,
@@ -71,7 +70,15 @@ class ImageCacheService
             ]
         );
 
-        // Generate and store embedding synchronously (small overhead, big cache benefit)
+        // Download to R2 if not already stored
+        if (!$image->stored_path) {
+            $storedPath = $this->uploadToR2($url, $source, $externalId);
+            if ($storedPath) {
+                $image->update(['stored_path' => $storedPath]);
+            }
+        }
+
+        // Generate embedding asynchronously
         $vector = $this->embedding->embed($normalized);
         if ($vector) {
             try {
@@ -86,6 +93,50 @@ class ImageCacheService
         }
 
         return $image;
+    }
+
+    /**
+     * Download an image from an external URL and upload it to R2.
+     * Returns the storage path on success, null on failure.
+     */
+    private function uploadToR2(string $url, string $source, string $externalId): ?string
+    {
+        if (!config('filesystems.disks.r2.key')) {
+            return null;
+        }
+
+        try {
+            $response = Http::timeout(15)->get($url);
+            if (!$response->successful()) {
+                Log::warning("ImageCacheService: failed to download image from {$url}: HTTP {$response->status()}");
+                return null;
+            }
+
+            $contentType = $response->header('Content-Type') ?? 'image/jpeg';
+            $ext = $this->extensionFromContentType($contentType);
+            $path = "images/{$source}/{$externalId}.{$ext}";
+
+            Storage::disk('r2')->put($path, $response->body(), [
+                'visibility'  => 'public',
+                'ContentType' => $contentType,
+            ]);
+
+            Log::info("ImageCacheService: uploaded {$path} to R2");
+            return $path;
+        } catch (\Throwable $e) {
+            Log::warning("ImageCacheService: R2 upload failed for {$url}: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function extensionFromContentType(string $contentType): string
+    {
+        return match (true) {
+            str_contains($contentType, 'png')  => 'png',
+            str_contains($contentType, 'gif')  => 'gif',
+            str_contains($contentType, 'webp') => 'webp',
+            default                            => 'jpg',
+        };
     }
 
     private function normalize(string $query): string

@@ -108,6 +108,13 @@ if [ -n "${STRIPE_PUBLISHABLE_KEY:-}" ]; then upsert_env "STRIPE_PUBLISHABLE_KEY
 if [ -n "${STRIPE_WEBHOOK_SECRET:-}" ]; then upsert_env "STRIPE_WEBHOOK_SECRET" "${STRIPE_WEBHOOK_SECRET}"; fi
 
 
+# Persist Cloudflare R2 keys.
+if [ -n "${CLOUDFLARE_R2_ACCESS_KEY_ID:-}" ]; then upsert_env "CLOUDFLARE_R2_ACCESS_KEY_ID" "${CLOUDFLARE_R2_ACCESS_KEY_ID}"; fi
+if [ -n "${CLOUDFLARE_R2_SECRET_ACCESS_KEY:-}" ]; then upsert_env "CLOUDFLARE_R2_SECRET_ACCESS_KEY" "${CLOUDFLARE_R2_SECRET_ACCESS_KEY}"; fi
+if [ -n "${CLOUDFLARE_R2_BUCKET:-}" ]; then upsert_env "CLOUDFLARE_R2_BUCKET" "${CLOUDFLARE_R2_BUCKET}"; fi
+if [ -n "${CLOUDFLARE_R2_ENDPOINT:-}" ]; then upsert_env "CLOUDFLARE_R2_ENDPOINT" "${CLOUDFLARE_R2_ENDPOINT}"; fi
+if [ -n "${CLOUDFLARE_R2_PUBLIC_URL:-}" ]; then upsert_env "CLOUDFLARE_R2_PUBLIC_URL" "${CLOUDFLARE_R2_PUBLIC_URL}"; fi
+
 # Persist AI / media keys.
 if [ -n "${ANTHROPIC_API_KEY:-}" ]; then upsert_env "ANTHROPIC_API_KEY" "${ANTHROPIC_API_KEY}"; fi
 if [ -n "${ANTHROPIC_MODEL:-}" ]; then upsert_env "ANTHROPIC_MODEL" "${ANTHROPIC_MODEL}"; fi

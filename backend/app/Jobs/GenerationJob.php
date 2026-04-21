@@ -119,10 +119,11 @@ class GenerationJob implements ShouldQueue
 
         // 1. Check the semantic/keyword cache — skip if URL already used in this module
         $hit = $this->cache->find($refined);
-        if ($hit && !in_array($hit->url, $usedUrls)) {
-            $usedUrls[] = $hit->url;
+        if ($hit && !in_array($hit->resolvedUrl(), $usedUrls)) {
+            $resolvedUrl = $hit->resolvedUrl();
+            $usedUrls[] = $resolvedUrl;
             return [
-                'url'          => $hit->url,
+                'url'          => $resolvedUrl,
                 'alt_text'     => $hit->topic,
                 'source'       => $hit->source,
                 'external_id'  => $hit->external_id,
