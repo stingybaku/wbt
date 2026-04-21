@@ -19,6 +19,8 @@ use App\Http\Controllers\BillingController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\ViewerController;
 
+Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);
 use App\Http\Controllers\PasswordResetController;
 
 Route::post('/auth/register',                       [AuthController::class, 'register']);
