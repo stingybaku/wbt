@@ -1,0 +1,452 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import {
+  cancelSubscription,
+  downloadInvoice,
+  fetchBillingPlans,
+  fetchCurrentSubscription,
+  fetchTransactions,
+  startCheckout,
+} from '../lib/api';
+import type { BillingSlot, BillingSubscription, BillingTransaction, Plan } from '../lib/types';
+
+// ─── Billing page ─────────────────────────────────────────────────────────────
+
+export function BillingView() {
+  const { token } = useAuth();
+
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [subscription, setSubscription] = useState<BillingSubscription | null | undefined>(undefined);
+  const [transactions, setTransactions] = useState<BillingTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [invoiceLoading, setInvoiceLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    Promise.all([fetchBillingPlans(token), fetchCurrentSubscription(token), fetchTransactions(token)])
+      .then(([plansRes, subRes, txRes]) => {
+        setPlans(plansRes.plans);
+        setSubscription(subRes.subscription);
+        setTransactions(txRes.transactions);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  async function handleDownloadInvoice(tx: BillingTransaction) {
+    if (!token) return;
+    setInvoiceLoading(tx.id);
+    try {
+      const invoiceNum = tx.id.slice(0, 8).toUpperCase();
+      await downloadInvoice(token, tx.id, `invoice-${invoiceNum}.pdf`);
+    } catch {
+      setError('Failed to download invoice. Please try again.');
+    } finally {
+      setInvoiceLoading(null);
+    }
+  }
+
+  async function handleCheckout(planId: string) {
+    if (!token) return;
+    setCheckoutLoading(planId);
+    setError(null);
+    try {
+      const res = await startCheckout(token, planId);
+      window.location.href = res.checkout_url;
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Checkout failed');
+      setCheckoutLoading(null);
+    }
+  }
+
+  async function handleCancel() {
+    if (!token || !subscription) return;
+    if (!confirm('Are you sure you want to cancel your subscription?')) return;
+    setCancelLoading(true);
+    setError(null);
+    try {
+      await cancelSubscription(token);
+      const res = await fetchCurrentSubscription(token);
+      setSubscription(res.subscription);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Cancel failed');
+    } finally {
+      setCancelLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="billing-page">
+        <p className="billing-loading">Loading billing info…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="billing-page">
+      <h1 className="billing-title">Billing &amp; Plans</h1>
+
+      {error && <div className="error-banner">{error}</div>}
+
+      {/* Current subscription */}
+      {subscription && (
+        <div className="billing-current card">
+          <div className="billing-current-header">
+            <div>
+              <h2 className="billing-current-plan">{subscription.plan.name}</h2>
+              <span className={`billing-status-pill billing-status--${subscription.status}`}>
+                {subscription.status}
+              </span>
+            </div>
+            {subscription.plan.type === 'subscription' && subscription.status === 'active' && (
+              <button
+                type="button"
+                className="ghost"
+                onClick={handleCancel}
+                disabled={cancelLoading}
+              >
+                {cancelLoading ? 'Cancelling…' : 'Cancel subscription'}
+              </button>
+            )}
+          </div>
+
+          <div className="billing-quota-grid">
+            <QuotaBar
+              label="Modules"
+              used={subscription.modules_used}
+              available={subscription.modules_available}
+              limit={subscription.modules_used + subscription.modules_available}
+            />
+            <QuotaBar
+              label="Seats"
+              used={subscription.seats_used}
+              available={subscription.seats_available}
+              limit={subscription.seats_used + subscription.seats_available}
+            />
+          </div>
+
+          {subscription.slots && <SlotBreakdown slots={subscription.slots} />}
+
+          {subscription.current_period_end && (
+            <p className="billing-renews">
+              {subscription.status === 'cancelled' ? 'Access until' : 'Renews'}:{' '}
+              <strong>{new Date(subscription.current_period_end).toLocaleDateString()}</strong>
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Plan cards */}
+      <h2 className="billing-plans-heading">
+        {subscription ? 'Available Plans' : 'Choose a Plan'}
+      </h2>
+
+      <div className="billing-plans-grid">
+        {plans.map((plan) => (
+          <PlanCard
+            key={plan.id}
+            plan={plan}
+            isCurrent={
+              plan.type === 'subscription' &&
+              subscription?.plan.id === plan.id &&
+              subscription?.status === 'active'
+            }
+            isOwned={
+              plan.type === 'one_time' &&
+              subscription?.plan.id === plan.id &&
+              subscription?.status === 'active'
+            }
+            loading={checkoutLoading === plan.id}
+            onSelect={() => handleCheckout(plan.id)}
+          />
+        ))}
+      </div>
+
+      {/* Transaction history */}
+      <h2 className="billing-plans-heading">Transaction History</h2>
+      {transactions.length === 0 ? (
+        <p className="billing-no-transactions">No transactions yet.</p>
+      ) : (
+        <div className="billing-transactions card">
+          <table className="transactions-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Plan</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.map((tx) => (
+                <tr key={tx.id}>
+                  <td className="tx-date">
+                    {new Date(tx.created_at).toLocaleDateString(undefined, {
+                      year: 'numeric', month: 'short', day: 'numeric',
+                    })}
+                  </td>
+                  <td className="tx-plan">{tx.plan_name}</td>
+                  <td className="tx-desc">{tx.description ?? (tx.plan_type === 'one_time' ? 'One-time purchase' : 'Subscription')}</td>
+                  <td className="tx-amount">{tx.amount_formatted}</td>
+                  <td>
+                    <span className={`tx-status tx-status--${tx.status}`}>{tx.status}</span>
+                  </td>
+                  <td className="tx-actions">
+                    <button
+                      type="button"
+                      className="ghost tx-invoice-btn"
+                      onClick={() => handleDownloadInvoice(tx)}
+                      disabled={invoiceLoading === tx.id}
+                    >
+                      {invoiceLoading === tx.id ? 'Downloading…' : 'Invoice ↓'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Slot breakdown (one-time plans) ─────────────────────────────────────────
+
+function SlotBreakdown({ slots }: { slots: BillingSlot[] }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="slot-breakdown">
+      <button
+        type="button"
+        className="ghost slot-breakdown-toggle"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span>{open ? '▲' : '▼'}</span>
+        <span>
+          {slots.filter((s) => s.id).length} / {slots.length} module{slots.length !== 1 ? 's' : ''} in use
+        </span>
+      </button>
+
+      {open && (
+        <ul className="slot-list">
+          {slots.map((slot, i) => {
+            const pct = slot.seats_limit === 0 ? 0 : Math.round((slot.seats_used / slot.seats_limit) * 100);
+            return (
+              <li key={slot.id ?? `empty-${i}`} className="slot-item">
+                <div className="slot-item-header">
+                  <span className="slot-item-title">
+                    {slot.title ?? <em className="slot-item-empty">Unused slot</em>}
+                  </span>
+                  <span className="slot-item-seats">
+                    {slot.seats_used}/{slot.seats_limit} seats
+                  </span>
+                </div>
+                <div className="slot-item-bar-track">
+                  <div
+                    className={`slot-item-bar-fill${pct >= 80 ? ' slot-item-bar-fill--warn' : ''}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ─── Plan card ────────────────────────────────────────────────────────────────
+
+function PlanCard({
+  plan,
+  isCurrent,
+  isOwned,
+  loading,
+  onSelect,
+}: {
+  plan: Plan;
+  isCurrent: boolean;
+  isOwned: boolean;
+  loading: boolean;
+  onSelect: () => void;
+}) {
+  const priceLabel = plan.price_cents === 0 ? 'Free' : `$${(plan.price_cents / 100).toFixed(0)}`;
+  const periodLabel = plan.type === 'one_time'
+    ? 'one-time'
+    : plan.billing_period === 'annual'
+      ? '/ mo · billed annually'
+      : '/ mo';
+
+  return (
+    <div className={`plan-card card${isCurrent ? ' plan-card--current' : ''}`}>
+      {isCurrent && <span className="plan-card-badge">Current plan</span>}
+
+      <h3 className="plan-card-name">{plan.name}</h3>
+
+      <div className="plan-card-price">
+        <span className="plan-card-amount">{priceLabel}</span>
+        <span className="plan-card-period">{periodLabel}</span>
+      </div>
+
+      <ul className="plan-card-features">
+        <li>
+          <FeatureIcon /> {plan.module_limit} {plan.module_limit === 1 ? 'module' : 'modules'}
+          {plan.type === 'subscription' ? ' / cycle' : ''}
+        </li>
+        <li>
+          <FeatureIcon /> {plan.seat_limit} {plan.seat_limit === 1 ? 'seat' : 'seats'}
+        </li>
+        {plan.rollover && (
+          <li>
+            <FeatureIcon /> Unused modules roll over
+          </li>
+        )}
+        {plan.billing_period === 'annual' && (
+          <li>
+            <FeatureIcon /> Annual billing
+          </li>
+        )}
+      </ul>
+
+      <button
+        type="button"
+        onClick={onSelect}
+        disabled={isCurrent || loading}
+        className={isCurrent ? 'ghost' : undefined}
+      >
+        {loading ? 'Redirecting…' : isCurrent ? 'Current plan' : isOwned ? 'Buy again' : 'Get started'}
+      </button>
+    </div>
+  );
+}
+
+// ─── Quota bar ────────────────────────────────────────────────────────────────
+
+function QuotaBar({
+  label,
+  used,
+  available,
+  limit,
+}: {
+  label: string;
+  used: number;
+  available: number;
+  limit: number;
+}) {
+  const total = used + available;
+  const pct = total === 0 ? 0 : Math.round((used / total) * 100);
+  const isWarning = pct >= 80;
+
+  return (
+    <div className="quota-bar">
+      <div className="quota-bar-labels">
+        <span className="quota-bar-label">{label}</span>
+        <span className="quota-bar-count">
+          {used} / {limit} used
+        </span>
+      </div>
+      <div className="quota-bar-track">
+        <div
+          className={`quota-bar-fill${isWarning ? ' quota-bar-fill--warn' : ''}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function FeatureIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+    </svg>
+  );
+}
+
+// ─── Post-checkout pages ──────────────────────────────────────────────────────
+
+export function BillingSuccessPage() {
+  const { token } = useAuth();
+  const navigate = useNavigate();
+  const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading');
+
+  useEffect(() => {
+    if (!token) return;
+
+    // Poll for the subscription to become active (webhook activates it asynchronously)
+    let attempts = 0;
+    const maxAttempts = 20;
+    const interval = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetchCurrentSubscription(token);
+        if (res.subscription?.status === 'active') {
+          clearInterval(interval);
+          setStatus('ok');
+        } else if (attempts >= maxAttempts) {
+          clearInterval(interval);
+          // Webhook may still be in flight — show success anyway
+          setStatus('ok');
+        }
+      } catch {
+        clearInterval(interval);
+        setStatus('error');
+      }
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [token]);
+
+  return (
+    <div className="billing-result-page">
+      {status === 'loading' && <p>Confirming your payment…</p>}
+      {status === 'ok' && (
+        <>
+          <div className="billing-result-icon billing-result-icon--success">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+            </svg>
+          </div>
+          <h1>You're all set!</h1>
+          <p>Your plan is now active. Start building your first training module.</p>
+          <button type="button" onClick={() => navigate('/billing')}>View my plan</button>
+          <button type="button" className="ghost" onClick={() => navigate('/projects')}>Go to projects</button>
+        </>
+      )}
+      {status === 'error' && (
+        <>
+          <h1>Something went wrong</h1>
+          <p>We could not confirm your payment. Please contact support if you were charged.</p>
+          <button type="button" onClick={() => navigate('/billing')}>Back to billing</button>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function BillingCancelPage() {
+  const navigate = useNavigate();
+  return (
+    <div className="billing-result-page">
+      <div className="billing-result-icon billing-result-icon--cancel">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" />
+        </svg>
+      </div>
+      <h1>Payment cancelled</h1>
+      <p>You have not been charged. You can try again whenever you're ready.</p>
+      <button type="button" onClick={() => navigate('/billing')}>View plans</button>
+      <button type="button" className="ghost" onClick={() => navigate('/projects')}>Back to projects</button>
+    </div>
+  );
+}

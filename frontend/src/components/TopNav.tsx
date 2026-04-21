@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   fetchNotifications,
@@ -159,6 +159,14 @@ export function TopNav() {
                 <strong>{user?.name}</strong>
                 <span>{user?.email}</span>
               </div>
+              <hr className="profile-panel-divider" />
+              <NavLink
+                to="/billing"
+                className="profile-panel-link"
+                onClick={() => setProfileOpen(false)}
+              >
+                Billing &amp; Plans
+              </NavLink>
               <hr className="profile-panel-divider" />
               <button
                 type="button"
