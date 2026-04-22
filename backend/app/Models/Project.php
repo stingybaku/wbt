@@ -21,6 +21,9 @@ class Project extends Model
         'source_url',
         'source_text',
         'source_character_count',
+        'source_status',
+        'source_error',
+        'source_temp_path',
     ];
 
     protected $casts = [

@@ -19,6 +19,8 @@ export type Project = {
   source_type: 'file' | 'url' | null;
   source_url: string | null;
   source_character_count: number | null;
+  source_status: 'extracting' | 'ready' | 'failed' | null;
+  source_error: string | null;
   cover_image_url: string | null;
   module_status: 'generating' | 'generated' | 'failed' | null;
   source_summary: string | null;

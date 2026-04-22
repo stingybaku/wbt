@@ -1,6 +1,6 @@
 import { FormEvent, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createProject, uploadSource, generateModule } from '../lib/api';
+import { createProject, uploadSource } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
 type Step = 1 | 2 | 3 | 4;
@@ -70,7 +70,7 @@ export function CreateProjectWizard() {
         rights_attestation: state.rightsAttested,
       });
 
-      // Upload the source
+      // Upload the source — returns immediately with status: 'extracting'
       const source =
         state.sourceType === 'file' && state.file
           ? { type: 'file' as const, file: state.file }
@@ -78,12 +78,12 @@ export function CreateProjectWizard() {
 
       await uploadSource(token, project.id, source, (pct) => setUploadProgress(pct));
 
-      // Kick off generation immediately
-      await generateModule(token, project.id, {
-        duration_minutes: state.durationMinutes,
+      // Store generation params so the project page can auto-trigger once extraction is ready
+      sessionStorage.setItem(`gen_params_${project.id}`, JSON.stringify({
+        duration_minutes:    state.durationMinutes,
         learning_objectives: state.learningObjectives || undefined,
-        assessment_count: state.assessmentCount,
-      });
+        assessment_count:    state.assessmentCount,
+      }));
 
       navigate(`/projects/${project.id}`);
     } catch (err: unknown) {

@@ -163,8 +163,9 @@ export function generateModule(
 export type UploadSourceResponse = {
   source_type: 'file' | 'url';
   source_url: string | null;
-  character_count: number;
+  character_count: number | null;
   truncated: boolean;
+  status: 'extracting' | 'ready';
 };
 
 export function uploadSource(

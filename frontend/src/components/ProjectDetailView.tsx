@@ -32,13 +32,15 @@ export function ProjectDetailView() {
     setSearchParams(tab === 'overview' ? {} : { tab });
   }
 
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef        = useRef<ReturnType<typeof setInterval> | null>(null);
+  const projectPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function stopPolling() {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  }
+
+  function stopProjectPolling() {
+    if (projectPollRef.current) { clearInterval(projectPollRef.current); projectPollRef.current = null; }
   }
 
   async function pollModule() {
@@ -57,6 +59,42 @@ export function ProjectDetailView() {
     pollRef.current = setInterval(pollModule, POLL_INTERVAL_MS);
   }
 
+  async function triggerAutoGenerate(projectId: string) {
+    if (!token) return;
+    const raw = sessionStorage.getItem(`gen_params_${projectId}`);
+    if (!raw) return;
+    try {
+      const params = JSON.parse(raw) as { duration_minutes: number; learning_objectives?: string; assessment_count: number };
+      sessionStorage.removeItem(`gen_params_${projectId}`);
+      await generateModule(token, projectId, params);
+      const res = await fetchModule(token, projectId);
+      setModule(res.module);
+      startPolling();
+    } catch (err: unknown) {
+      if (err instanceof QuotaError) { navigate('/billing'); return; }
+      setError(err instanceof Error ? err.message : 'Failed to start generation');
+    }
+  }
+
+  async function pollProject() {
+    if (!token || !id) return;
+    try {
+      const res = await fetchProject(token, id);
+      setProject(res.project);
+      if (res.project.source_status !== 'extracting') {
+        stopProjectPolling();
+        if (res.project.source_status === 'ready') await triggerAutoGenerate(id);
+      }
+    } catch {
+      stopProjectPolling();
+    }
+  }
+
+  function startProjectPolling() {
+    stopProjectPolling();
+    projectPollRef.current = setInterval(pollProject, POLL_INTERVAL_MS);
+  }
+
   useEffect(() => {
     if (!token || !id) return;
     setLoading(true);
@@ -69,12 +107,18 @@ export function ProjectDetailView() {
         setProject(projectRes.project);
         setModule(moduleRes.module);
         setInvites(invitesRes.invites);
-        if (moduleRes.module?.status === 'generating') startPolling();
+        if (moduleRes.module?.status === 'generating') {
+          startPolling();
+        } else if (projectRes.project.source_status === 'extracting') {
+          startProjectPolling();
+        } else if (projectRes.project.source_status === 'ready') {
+          triggerAutoGenerate(id);
+        }
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load project'))
       .finally(() => setLoading(false));
 
-    return () => stopPolling();
+    return () => { stopPolling(); stopProjectPolling(); };
   }, [token, id]);
 
   async function handleRetry() {
@@ -247,6 +291,8 @@ export function ProjectDetailView() {
                   hasSource={!!project.source_type}
                   retrying={retrying}
                   onRetry={handleRetry}
+                  sourceStatus={project.source_status}
+                  sourceError={project.source_error}
                 />
               </div>
 
@@ -301,13 +347,41 @@ export function ProjectDetailView() {
 // ─── Module status ────────────────────────────────────────────────────────────
 
 function ModuleStatusPanel({
-  module, hasSource, retrying, onRetry,
+  module, hasSource, retrying, onRetry, sourceStatus, sourceError,
 }: {
   module: ModuleRecord | null;
   hasSource: boolean;
   retrying: boolean;
   onRetry: () => void;
+  sourceStatus: 'extracting' | 'ready' | 'failed' | null;
+  sourceError: string | null;
 }) {
+  if (sourceStatus === 'extracting') {
+    return (
+      <div className="module-status-visual">
+        <div className="module-status-icon module-status-icon--generating">
+          <span className="generating-indicator">●</span>
+        </div>
+        <div className="module-status-text">
+          <strong>Extracting your document…</strong>
+          <p>This usually takes under a minute. The page will update automatically.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (sourceStatus === 'failed' && !module) {
+    return (
+      <div className="module-status-visual">
+        <div className="module-status-icon module-status-icon--failed">✕</div>
+        <div className="module-status-text">
+          <strong>Source extraction failed</strong>
+          <p>{sourceError ?? 'An unknown error occurred while processing your document.'}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!module && !hasSource) {
     return (
       <div className="module-status-visual">
