@@ -98,6 +98,11 @@ php artisan cache:clear || true
 echo "Worker: starting queue:work"
 echo "Worker: DB_CONNECTION=${DB_CONNECTION:-unset} DB_HOST=${DB_HOST:-unset}"
 
+# Minimal HTTP server so Railway healthchecks pass (worker has no real HTTP traffic)
+mkdir -p /tmp/health
+echo '<?php http_response_code(200); echo "OK";' > /tmp/health/index.php
+php -S "0.0.0.0:${PORT:-8080}" -t /tmp/health &>/dev/null &
+
 exec php artisan queue:work \
   --tries=1 \
   --timeout=720 \
