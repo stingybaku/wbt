@@ -59,23 +59,6 @@ export function ProjectDetailView() {
     pollRef.current = setInterval(pollModule, POLL_INTERVAL_MS);
   }
 
-  async function triggerAutoGenerate(projectId: string) {
-    if (!token) return;
-    const raw = sessionStorage.getItem(`gen_params_${projectId}`);
-    if (!raw) return;
-    try {
-      const params = JSON.parse(raw) as { duration_minutes: number; learning_objectives?: string; assessment_count: number };
-      sessionStorage.removeItem(`gen_params_${projectId}`);
-      await generateModule(token, projectId, params);
-      const res = await fetchModule(token, projectId);
-      setModule(res.module);
-      startPolling();
-    } catch (err: unknown) {
-      if (err instanceof QuotaError) { navigate('/billing'); return; }
-      setError(err instanceof Error ? err.message : 'Failed to start generation');
-    }
-  }
-
   async function pollProject() {
     if (!token || !id) return;
     try {
@@ -83,7 +66,10 @@ export function ProjectDetailView() {
       setProject(res.project);
       if (res.project.source_status !== 'extracting') {
         stopProjectPolling();
-        if (res.project.source_status === 'ready') await triggerAutoGenerate(id);
+        // Extraction done — generation was dispatched server-side; pick up module state
+        const moduleRes = await fetchModule(token, id);
+        setModule(moduleRes.module);
+        if (moduleRes.module?.status === 'generating') startPolling();
       }
     } catch {
       stopProjectPolling();
@@ -111,8 +97,6 @@ export function ProjectDetailView() {
           startPolling();
         } else if (projectRes.project.source_status === 'extracting') {
           startProjectPolling();
-        } else if (projectRes.project.source_status === 'ready') {
-          triggerAutoGenerate(id);
         }
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load project'))

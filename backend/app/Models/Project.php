@@ -24,6 +24,9 @@ class Project extends Model
         'source_status',
         'source_error',
         'source_temp_path',
+        'gen_duration_minutes',
+        'gen_learning_objectives',
+        'gen_assessment_count',
     ];
 
     protected $casts = [
