@@ -1,4 +1,4 @@
-FROM php:8.3-cli-alpine AS vendor
+FROM php:8.4-cli-alpine AS vendor
 WORKDIR /app
 
 RUN apk add --no-cache \
@@ -40,7 +40,7 @@ COPY backend/public ./public
 COPY backend/vite.config.js ./
 RUN npm run build
 
-FROM php:8.3-cli-alpine
+FROM php:8.4-cli-alpine
 WORKDIR /app
 
 RUN apk add --no-cache \
