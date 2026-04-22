@@ -142,4 +142,7 @@ php artisan config:clear
 php artisan cache:clear || true
 php artisan package:discover --ansi
 
-exec php -d upload_max_filesize=15M -d post_max_size=20M artisan serve --host=0.0.0.0 --port="${PORT:-8080}"
+# Write upload limits into PHP's scan dir so they apply to the built-in server child process
+echo -e "upload_max_filesize = 15M\npost_max_size = 20M" > /usr/local/etc/php/conf.d/uploads.ini
+
+exec php artisan serve --host=0.0.0.0 --port="${PORT:-8080}"
