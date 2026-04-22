@@ -142,4 +142,4 @@ php artisan config:clear
 php artisan cache:clear || true
 php artisan package:discover --ansi
 
-exec php artisan serve --host=0.0.0.0 --port="${PORT:-8080}"
+exec php -d upload_max_filesize=15M -d post_max_size=20M artisan serve --host=0.0.0.0 --port="${PORT:-8080}"
