@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\SourceExtractionJob;
 use App\Models\Project;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -12,6 +13,19 @@ class ProjectSourceController extends Controller
 {
     public function store(Request $request, string $projectId)
     {
+        // Log raw PHP upload state before validation so errors are visible in Railway logs
+        if ($request->input('source_type') === 'file') {
+            $phpFile = $_FILES['file'] ?? null;
+            Log::info('ProjectSourceController: incoming file upload', [
+                'project_id'       => $projectId,
+                'php_upload_error' => $phpFile['error'] ?? 'no $_FILES entry',
+                'php_upload_size'  => $phpFile['size'] ?? null,
+                'content_length'   => $request->server('CONTENT_LENGTH'),
+                'upload_max_filesize' => ini_get('upload_max_filesize'),
+                'post_max_size'    => ini_get('post_max_size'),
+            ]);
+        }
+
         $request->validate([
             'source_type' => 'required|in:file,url',
             'file'        => 'required_if:source_type,file|file|mimes:pdf,docx,pptx|max:10240',
