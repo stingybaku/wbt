@@ -40,6 +40,13 @@ class SourceExtractionJob implements ShouldQueue
                 ? $this->extractFromTempFile()
                 : $this->extractFromUrl();
 
+            // PDFs often contain Windows-1252 bytes (e.g. curly quotes, em-dashes).
+            // Convert to UTF-8 if needed, then scrub any residual invalid sequences.
+            if (!mb_check_encoding($text, 'UTF-8')) {
+                $text = mb_convert_encoding($text, 'UTF-8', 'Windows-1252');
+            }
+            $text = mb_scrub($text);
+
             if (mb_strlen($text) > self::MAX_CHARS) {
                 $text = mb_substr($text, 0, self::MAX_CHARS);
             }
