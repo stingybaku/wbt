@@ -172,6 +172,7 @@ export function uploadSource(
   token: string,
   projectId: string,
   source: { type: 'file'; file: File } | { type: 'url'; url: string },
+  genParams: { duration_minutes: number; learning_objectives?: string; assessment_count: number },
   onProgress?: (pct: number) => void
 ): Promise<UploadSourceResponse> {
   return new Promise((resolve, reject) => {
@@ -182,6 +183,9 @@ export function uploadSource(
     } else {
       form.append('url', source.url);
     }
+    form.append('duration_minutes', String(genParams.duration_minutes));
+    if (genParams.learning_objectives) form.append('learning_objectives', genParams.learning_objectives);
+    form.append('assessment_count', String(genParams.assessment_count));
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${apiBase}/projects/${projectId}/source`);

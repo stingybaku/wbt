@@ -3,8 +3,10 @@
 namespace App\Jobs;
 
 use Anthropic\Client as AnthropicClient;
+use App\Models\Module;
 use App\Models\Project;
 use App\Services\ModerationService;
+use Illuminate\Support\Str;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Http;
@@ -72,6 +74,27 @@ class SourceExtractionJob implements ShouldQueue
             ]);
 
             Log::info("SourceExtractionJob succeeded for project {$this->projectId}: {$charCount} chars");
+
+            // Dispatch generation immediately if gen params were supplied at upload time
+            if ($project->gen_duration_minutes !== null) {
+                $module = Module::firstOrNew(['project_id' => $project->id]);
+                if (!$module->exists) {
+                    $module->id = 'mod_' . Str::uuid()->toString();
+                }
+                $module->status           = 'generating';
+                $module->module_json      = null;
+                $module->generation_error = null;
+                $module->save();
+
+                GenerationJob::dispatch(
+                    projectId:          $project->id,
+                    durationMinutes:    $project->gen_duration_minutes,
+                    learningObjectives: $project->gen_learning_objectives ?? '',
+                    assessmentCount:    $project->gen_assessment_count ?? 5,
+                );
+
+                Log::info("SourceExtractionJob: dispatched GenerationJob for project {$this->projectId}");
+            }
         } catch (\Throwable $e) {
             $project->update([
                 'source_status' => 'failed',
