@@ -3724,9 +3724,12 @@ input[type="range"]:focus {
   flex-direction: column;
   gap: 0.4rem;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  overflow: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
   min-width: 0;
 }
+
+.player-flashcard-face::-webkit-scrollbar { display: none; }
 
 .player-flashcard-front {
   background: white;
@@ -3751,10 +3754,6 @@ input[type="range"]:focus {
   font-size: 0.9rem;
   font-weight: 500;
   line-height: 1.5;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
   word-break: break-word;
   overflow-wrap: break-word;
   min-width: 0;
