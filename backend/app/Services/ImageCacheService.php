@@ -29,20 +29,34 @@ class ImageCacheService
                 ->first();
 
             if ($hit && $hit->distance < 0.18) {
-                return $hit;
+                return $this->ensureR2($hit);
             }
         }
 
         $hit = SourcedImage::where('topic', $normalized)->inRandomOrder()->first();
-        if ($hit) return $hit;
+        if ($hit) return $this->ensureR2($hit);
 
         $tokens = array_filter(explode(' ', $normalized));
         foreach ($tokens as $token) {
             $hit = SourcedImage::whereJsonContains('keywords', $token)->inRandomOrder()->first();
-            if ($hit) return $hit;
+            if ($hit) return $this->ensureR2($hit);
         }
 
         return null;
+    }
+
+    /**
+     * Upload to R2 if the record has no stored_path yet, then return it.
+     */
+    private function ensureR2(SourcedImage $image): SourcedImage
+    {
+        if (!$image->stored_path) {
+            $storedPath = $this->uploadToR2($image->url, $image->source, $image->external_id);
+            if ($storedPath) {
+                $image->update(['stored_path' => $storedPath]);
+            }
+        }
+        return $image;
     }
 
     /**
