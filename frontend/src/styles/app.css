@@ -3668,7 +3668,7 @@ input[type="range"]:focus {
 
 /* perspective lives on the wrapper div, not the button, for reliable 3D */
 .player-flashcard-wrap {
-  height: 160px;
+  height: 200px;
   perspective: 1000px;
 }
 
@@ -3680,6 +3680,7 @@ input[type="range"]:focus {
   border: none;
   padding: 0;
   text-align: left;
+  white-space: normal;
 }
 
 .player-flashcard-inner {
@@ -3930,7 +3931,12 @@ input[type="range"]:focus {
   align-items: flex-end;
   gap: 6px;
   padding: 0.5rem 0;
+  max-height: calc(100vh - 10rem);
+  overflow-y: auto;
+  scrollbar-width: none;
 }
+
+.player-sidenav::-webkit-scrollbar { display: none; }
 
 .player-sidenav-item {
   display: flex;

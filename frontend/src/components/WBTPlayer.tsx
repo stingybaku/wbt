@@ -329,6 +329,12 @@ function PlayerScreenNav({ screens, currentIndex, visitedSet, onJump }: {
   visitedSet: Set<number>;
   onJump: (index: number) => void;
 }) {
+  const activeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [currentIndex]);
+
   return (
     <nav className="player-sidenav" aria-label="Course screens">
       {screens.map((screen, i) => {
@@ -338,6 +344,7 @@ function PlayerScreenNav({ screens, currentIndex, visitedSet, onJump }: {
         return (
           <button
             key={screen.id}
+            ref={isActive ? activeRef : undefined}
             type="button"
             className={`player-sidenav-item${isActive ? ' active' : isVisited ? ' visited' : ' future'}`}
             onClick={() => canJump && onJump(i)}
