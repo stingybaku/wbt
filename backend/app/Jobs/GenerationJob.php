@@ -107,7 +107,7 @@ class GenerationJob implements ShouldQueue
      * Returns an array with keys: url, alt_text, source, external_id, photographer, license
      * Returns null if all sources are exhausted or produce duplicates.
      */
-    private function fetchImage(string $query, array &$usedUrls, ?string $fallbackQuery = null): ?array
+    private function fetchImage(string $query, array &$usedUrls, ?string $fallbackQuery = null, array $moduleKeywords = []): ?array
     {
         $refined = $this->refineImageQuery($query);
 
@@ -117,8 +117,19 @@ class GenerationJob implements ShouldQueue
             $refined = $fallbackQuery;
         }
 
+        // Build an enriched query for fresh API calls: append up to 2 module keywords
+        // that don't already appear in the refined query to bias toward the domain.
+        $enrichedQuery = $refined;
+        if ($moduleKeywords) {
+            $existing = explode(' ', $refined);
+            $extra    = array_slice(array_diff($moduleKeywords, $existing), 0, 2);
+            if ($extra) {
+                $enrichedQuery = $refined . ' ' . implode(' ', $extra);
+            }
+        }
+
         // 1. Check the semantic/keyword cache — skip if URL already used in this module
-        $hit = $this->cache->find($refined);
+        $hit = $this->cache->find($refined, $moduleKeywords);
         if ($hit && !in_array($hit->resolvedUrl(), $usedUrls)) {
             $resolvedUrl = $hit->resolvedUrl();
             $usedUrls[] = $resolvedUrl;
@@ -133,7 +144,7 @@ class GenerationJob implements ShouldQueue
         }
 
         // 2. Try Pexels first (higher free-tier rate limit)
-        $pexelsResult = $this->pexels->searchPhoto($refined);
+        $pexelsResult = $this->pexels->searchPhoto($enrichedQuery);
         if ($pexelsResult && !in_array($pexelsResult['url'], $usedUrls)) {
             $stored = $this->cache->store(
                 $refined,
@@ -161,7 +172,7 @@ class GenerationJob implements ShouldQueue
         if ($accessKey) {
             try {
                 $res = Http::timeout(8)->get('https://api.unsplash.com/search/photos', [
-                    'query'       => $refined,
+                    'query'       => $enrichedQuery,
                     'per_page'    => 3,
                     'orientation' => 'landscape',
                     'client_id'   => $accessKey,
@@ -213,6 +224,36 @@ class GenerationJob implements ShouldQueue
      * Tries meta.title first; if that also reduces to a vague single word, falls
      * back to the first sentence of meta.source_summary.
      */
+    /**
+     * Extract a deduplicated set of domain keywords from module metadata,
+     * used to bias image queries toward the module's subject area.
+     * Returns up to 10 high-frequency meaningful words.
+     */
+    private function extractModuleKeywords(array $meta, array $learningObjectives = []): array
+    {
+        static $stopWords = [
+            'a','an','the','of','in','on','at','to','for','and','or','with','is','are','was','be',
+            'by','as','it','its','from','this','that','into','will','can','how','what','when',
+            'where','why','which','who','your','their','they','them','have','has','been','would',
+            'should','could','about','after','before','between','through','during','under','over',
+            'not','but','also','such','more','than','then','these','those','some','each','other',
+        ];
+
+        $text = implode(' ', array_filter([
+            $meta['title']          ?? '',
+            $meta['audience']       ?? '',
+            $meta['source_summary'] ?? '',
+            implode(' ', $learningObjectives),
+        ]));
+
+        $words    = preg_split('/\W+/', strtolower($text), -1, PREG_SPLIT_NO_EMPTY);
+        $filtered = array_filter($words, fn($w) => strlen($w) > 3 && !in_array($w, $stopWords));
+        $freq     = array_count_values($filtered);
+        arsort($freq);
+
+        return array_keys(array_slice($freq, 0, 10, true));
+    }
+
     private function extractModuleTopic(array $meta): string
     {
         $refined = $this->refineImageQuery($meta['title'] ?? '');
@@ -357,7 +398,11 @@ class GenerationJob implements ShouldQueue
 
         // Module-level topic used as a fallback when a screen title is too generic
         // (e.g. "Welcome", "Conclusion") to produce a meaningful image query.
-        $moduleTopic = $this->extractModuleTopic($moduleJson['meta'] ?? []);
+        $moduleTopic    = $this->extractModuleTopic($moduleJson['meta'] ?? []);
+        $moduleKeywords = $this->extractModuleKeywords(
+            $moduleJson['meta'] ?? [],
+            $moduleJson['learning_objectives'] ?? []
+        );
 
         // Initialize attribution buckets for both sources
         if (!isset($moduleJson['attribution']['unsplash'])) {
@@ -383,7 +428,7 @@ class GenerationJob implements ShouldQueue
 
             $attempted++;
             try {
-                $result = $this->fetchImage($query, $usedUrls, $moduleTopic ?: null);
+                $result = $this->fetchImage($query, $usedUrls, $moduleTopic ?: null, $moduleKeywords);
 
                 if (!$result) {
                     $skippedNoResults++;
@@ -428,7 +473,7 @@ class GenerationJob implements ShouldQueue
 
                     $attempted++;
                     try {
-                        $result = $this->fetchImage($query, $usedUrls, $moduleTopic ?: null);
+                        $result = $this->fetchImage($query, $usedUrls, $moduleTopic ?: null, $moduleKeywords);
 
                         if (!$result) {
                             $skippedNoResults++;

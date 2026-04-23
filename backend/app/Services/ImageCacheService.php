@@ -16,7 +16,7 @@ class ImageCacheService
      * Find a cached image for the given query using semantic similarity.
      * Falls back to exact topic match, then keyword overlap if embeddings unavailable.
      */
-    public function find(string $query): ?SourcedImage
+    public function find(string $query, array $moduleKeywords = []): ?SourcedImage
     {
         $normalized = $this->normalize($query);
 
@@ -36,11 +36,13 @@ class ImageCacheService
         $hit = SourcedImage::where('topic', $normalized)->inRandomOrder()->first();
         if ($hit) return $this->ensureR2($hit);
 
-        // Score all keyword-matching candidates by overlap count; return the best match.
+        // Score candidates by screen keyword overlap + module keyword overlap.
         $tokens = array_values(array_filter(explode(' ', $normalized)));
-        if ($tokens) {
-            $candidates = SourcedImage::where(function ($q) use ($tokens) {
-                foreach ($tokens as $token) {
+        $allTokens = array_values(array_unique(array_merge($tokens, $moduleKeywords)));
+
+        if ($allTokens) {
+            $candidates = SourcedImage::where(function ($q) use ($allTokens) {
+                foreach ($allTokens as $token) {
                     $q->orWhereJsonContains('keywords', $token);
                 }
             })->get();
@@ -48,7 +50,8 @@ class ImageCacheService
             $best = $candidates
                 ->map(fn($img) => [
                     'image' => $img,
-                    'score' => count(array_intersect($tokens, $img->keywords ?? [])),
+                    'score' => count(array_intersect($tokens, $img->keywords ?? []))
+                             + count(array_intersect($moduleKeywords, $img->keywords ?? [])),
                 ])
                 ->sortByDesc('score')
                 ->first();
