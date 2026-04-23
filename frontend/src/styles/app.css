@@ -3095,6 +3095,13 @@ input[type="range"]:focus {
   gap: 0.5rem;
 }
 
+/* Standalone image rendered above interaction content on non-image_text screens */
+.player-screen-image {
+  margin: 0 0 1.25rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
 .player-image {
   width: 100%;
   max-height: 380px;
