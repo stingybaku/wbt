@@ -36,10 +36,26 @@ class ImageCacheService
         $hit = SourcedImage::where('topic', $normalized)->inRandomOrder()->first();
         if ($hit) return $this->ensureR2($hit);
 
-        $tokens = array_filter(explode(' ', $normalized));
-        foreach ($tokens as $token) {
-            $hit = SourcedImage::whereJsonContains('keywords', $token)->inRandomOrder()->first();
-            if ($hit) return $this->ensureR2($hit);
+        // Score all keyword-matching candidates by overlap count; return the best match.
+        $tokens = array_values(array_filter(explode(' ', $normalized)));
+        if ($tokens) {
+            $candidates = SourcedImage::where(function ($q) use ($tokens) {
+                foreach ($tokens as $token) {
+                    $q->orWhereJsonContains('keywords', $token);
+                }
+            })->get();
+
+            $best = $candidates
+                ->map(fn($img) => [
+                    'image' => $img,
+                    'score' => count(array_intersect($tokens, $img->keywords ?? [])),
+                ])
+                ->sortByDesc('score')
+                ->first();
+
+            if ($best && $best['score'] > 0) {
+                return $this->ensureR2($best['image']);
+            }
         }
 
         return null;
@@ -68,10 +84,13 @@ class ImageCacheService
         string $externalId,
         string $url,
         ?string $photographer,
-        string $license
+        string $license,
+        array $imageKeywords = []
     ): SourcedImage {
-        $normalized = $this->normalize($query);
-        $keywords   = array_values(array_unique(array_filter(explode(' ', $normalized))));
+        $normalized   = $this->normalize($query);
+        $queryWords   = array_filter(explode(' ', $normalized));
+        $imageWords   = array_map('strtolower', array_filter($imageKeywords));
+        $keywords     = array_values(array_unique(array_merge($queryWords, $imageWords)));
 
         $image = SourcedImage::updateOrCreate(
             ['source' => $source, 'external_id' => $externalId],

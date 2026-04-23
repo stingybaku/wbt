@@ -141,7 +141,8 @@ class GenerationJob implements ShouldQueue
                 $pexelsResult['external_id'],
                 $pexelsResult['url'],
                 $pexelsResult['photographer'],
-                $pexelsResult['license']
+                $pexelsResult['license'],
+                $pexelsResult['image_tags'] ?? []
             );
             $resolvedUrl = $stored->resolvedUrl();
             $usedUrls[] = $resolvedUrl;
@@ -170,13 +171,21 @@ class GenerationJob implements ShouldQueue
                     $url = $photo['urls']['regular'];
                     if (in_array($url, $usedUrls)) continue;
 
+                    $unsplashTags = collect($photo['tags'] ?? [])
+                        ->pluck('title')
+                        ->map(fn($t) => strtolower(trim($t)))
+                        ->filter()
+                        ->values()
+                        ->toArray();
+
                     $stored = $this->cache->store(
                         $refined,
                         'unsplash',
                         $photo['id'],
                         $url,
                         $photo['user']['name'],
-                        'Unsplash License'
+                        'Unsplash License',
+                        $unsplashTags
                     );
                     $resolvedUrl = $stored->resolvedUrl();
                     $usedUrls[] = $resolvedUrl;

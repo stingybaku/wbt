@@ -37,11 +37,20 @@ class PexelsService
                 'photographer' => $photo['photographer'],
                 'license'      => 'Pexels License',
                 'source'       => 'pexels',
+                'image_tags'   => $this->keywordsFromAlt($photo['alt'] ?? ''),
             ];
         } catch (\Throwable $e) {
             Log::warning('PexelsService: photo search failed: ' . $e->getMessage());
             return null;
         }
+    }
+
+    private function keywordsFromAlt(string $alt): array
+    {
+        if (!$alt) return [];
+        static $stopWords = ['a','an','the','of','in','on','at','to','for','and','or','with','is','are','was','be','by','as','it','its','from','this','that','into'];
+        $words = preg_split('/\W+/', strtolower($alt), -1, PREG_SPLIT_NO_EMPTY);
+        return array_values(array_filter($words, fn($w) => strlen($w) > 2 && !in_array($w, $stopWords)));
     }
 
     /**
