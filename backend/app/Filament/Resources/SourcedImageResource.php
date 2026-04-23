@@ -9,6 +9,8 @@ use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Storage;
 
 class SourcedImageResource extends Resource
 {
@@ -64,9 +66,30 @@ class SourcedImageResource extends Resource
                         'unsplash' => 'Unsplash',
                         'pexels'   => 'Pexels',
                     ]),
+                Tables\Filters\Filter::make('missing_r2')
+                    ->label('Not stored in R2')
+                    ->query(fn ($query) => $query->whereNull('stored_path')),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
+                Tables\Actions\DeleteAction::make()
+                    ->before(fn (SourcedImage $record) => self::deleteFromR2($record)),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('delete')
+                        ->label('Delete selected')
+                        ->icon('heroicon-o-trash')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalHeading('Delete selected images')
+                        ->modalDescription('This will remove the selected records and any associated R2 files. This cannot be undone.')
+                        ->action(function (Collection $records) {
+                            $records->each(fn (SourcedImage $record) => self::deleteFromR2($record));
+                            $records->each->delete();
+                        })
+                        ->deselectRecordsAfterCompletion(),
+                ]),
             ])
             ->recordUrl(fn (SourcedImage $record) => static::getUrl('view', ['record' => $record]));
     }
@@ -135,6 +158,13 @@ class SourcedImageResource extends Resource
                     ])
                     ->columns(2),
             ]);
+    }
+
+    private static function deleteFromR2(SourcedImage $record): void
+    {
+        if ($record->stored_path && config('filesystems.disks.r2.key')) {
+            Storage::disk('r2')->delete($record->stored_path);
+        }
     }
 
     public static function getPages(): array
