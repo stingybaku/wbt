@@ -133,12 +133,43 @@ a { color: var(--accent); }
 }
 
 .top-nav-brand {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--accent);
   text-decoration: none;
-  letter-spacing: -0.01em;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* Crop into the logo content area; the source image has significant
+   gray padding around the actual mark — clip it to just the logo. */
+.top-nav-logo {
+  height: 36px;
+  width: 160px;
+  object-fit: cover;
+  object-position: 37% 52%;
+  border-radius: 6px;
+  display: block;
+}
+
+.login-logo {
+  width: 240px;
+  height: auto;
+  border-radius: 10px;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.login-promo-logo {
+  width: 200px;
+  height: auto;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  opacity: 0.9;
+}
+
+.viewer-gate-logo {
+  width: 200px;
+  height: auto;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
 }
 
 .top-nav-actions {
