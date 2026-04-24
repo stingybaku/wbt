@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, NavLink } from 'react-router-dom';
+import logo from '../assets/logo.png';
 import { useAuth } from '../context/AuthContext';
 import {
   fetchNotifications,
@@ -88,7 +89,7 @@ export function TopNav() {
   return (
     <nav className="top-nav">
       <Link to="/projects" className="top-nav-brand">
-        WBT Forge
+        <img src={logo} alt="WBT Forge" className="top-nav-logo" />
       </Link>
 
       <div className="top-nav-actions">
