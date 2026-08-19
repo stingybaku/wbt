@@ -50,8 +50,12 @@ class ModuleController extends Controller
         return response()->json(['status' => 'generating'], 202);
     }
 
-    public function show(string $projectId)
+    public function show(Request $request, string $projectId)
     {
+        Project::where('id', $projectId)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
         $module = Module::where('project_id', $projectId)->first();
 
         return response()->json([

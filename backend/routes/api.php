@@ -18,7 +18,6 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\ViewerController;
-
 use App\Http\Controllers\PasswordResetController;
 
 Route::post('/auth/register',                       [AuthController::class, 'register']);
