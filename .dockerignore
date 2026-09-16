@@ -1,0 +1,41 @@
+# The backend Dockerfile does `COPY backend/. ./`, so without this file a local
+# build bakes whatever happens to be in the working tree into the image. That
+# included .env (real secrets) and bootstrap/cache/packages.php, which is built
+# from the local dev dependencies and refers to packages that do not exist in
+# the --no-dev vendor stage, so the container failed to boot.
+#
+# Railway builds from the git repo, where these are untracked, but a local or CI
+# build must not behave differently - or leak credentials into an image layer.
+
+.git
+.gitignore
+.claude
+
+# Secrets. .env.example is deliberately NOT excluded: railway-start.sh copies it
+# to .env on first boot.
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Dependencies are installed in their own build stages.
+backend/vendor
+backend/node_modules
+frontend/node_modules
+frontend/dist
+
+# Generated at runtime or in the build stages; a stale copy breaks boot.
+backend/bootstrap/cache/*.php
+backend/storage/logs/*.log
+backend/storage/framework/cache/data/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/public/build
+backend/public/storage
+
+# Local databases.
+backend/database/*.sqlite
+backend/database/*.sqlite-journal
+
+# Editor and OS noise.
+**/.DS_Store
+**/*.tsbuildinfo

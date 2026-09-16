@@ -40,32 +40,32 @@ COPY backend/public ./public
 COPY backend/vite.config.js ./
 RUN npm run build
 
-FROM php:8.4-cli-alpine
+# FrankenPHP (Caddy + PHP in one process) replaces `php artisan serve`, which is
+# PHP's single-threaded development server and handles one request at a time.
+FROM dunglas/frankenphp:1.9-php8.4-alpine
 WORKDIR /app
 
-RUN apk add --no-cache \
-        bash \
-        postgresql-libs postgresql-dev \
-        icu-dev \
-        libzip-dev \
-        oniguruma-dev \
-        libxml2-dev \
-        libpng-dev \
-        libjpeg-turbo-dev \
-        freetype-dev \
-        qpdf \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install \
+# install-php-extensions ships with the FrankenPHP images and resolves the
+# native build dependencies for each extension itself.
+RUN apk add --no-cache bash qpdf \
+    && install-php-extensions \
         intl \
         zip \
         mbstring \
         xml \
         dom \
         bcmath \
-        pdo \
         pdo_pgsql \
         pcntl \
-        gd
+        gd \
+        opcache
+
+# Production opcache settings. validate_timestamps=0 is safe because the code
+# never changes inside a running container; a deploy builds a new image.
+COPY backend/docker/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+
+# Large PDF uploads (source material) need more than PHP's 2M/8M defaults.
+COPY backend/docker/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 
 COPY backend/. ./
 COPY --from=vendor /app/vendor ./vendor

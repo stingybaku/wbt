@@ -142,9 +142,6 @@ php artisan config:clear
 php artisan cache:clear || true
 php artisan package:discover --ansi
 
-# Write upload limits into PHP's scan dir so they apply to the built-in server child process
-echo -e "upload_max_filesize = 15M\npost_max_size = 20M" > /usr/local/etc/php/conf.d/uploads.ini
-
 # Warm the framework caches. This must come after the .env writes above, since
 # config:cache snapshots configuration as it stands now and stops .env from
 # being read on subsequent boots of the request workers.
@@ -152,4 +149,13 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
-exec php artisan serve --host=0.0.0.0 --port="${PORT:-8080}"
+# FrankenPHP (Caddy + PHP) serves the app. `php artisan serve` was PHP's
+# single-threaded development server: it handles one request at a time, so a
+# single slow request blocked every other user.
+#
+# SERVER_NAME as a bare port disables Caddy's automatic HTTPS, which is correct
+# here because Railway terminates TLS at its edge and forwards plain HTTP.
+export SERVER_NAME=":${PORT:-8080}"
+export SERVER_ROOT="/app/public"
+
+exec frankenphp run --config /etc/caddy/Caddyfile
