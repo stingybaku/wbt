@@ -79,6 +79,12 @@ a { color: var(--accent); }
   background: var(--bg);
 }
 
+/* Suspense fallback while a lazily loaded route chunk is fetched. */
+.app-shell.route-loading {
+  color: var(--text-2);
+  font-size: 0.95rem;
+}
+
 /* Atmospheric glow orbs */
 .auth-shell::before,
 .auth-shell::after {

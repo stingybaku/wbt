@@ -53,10 +53,25 @@ class ModuleController extends Controller
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
 
-        $module = Module::where('project_id', $projectId)->first();
+        // The editor polls this every 3 seconds while a module generates, and
+        // only needs the status. `?fields=status` leaves module_json - an
+        // entire generated course - out of both the query and the response.
+        $statusOnly = $request->query('fields') === 'status';
+
+        $columns = ['id', 'project_id', 'status', 'generation_error', 'created_at', 'updated_at'];
+
+        $module = Module::where('project_id', $projectId)
+            ->select($statusOnly ? $columns : array_merge($columns, ['module_json']))
+            ->first();
+
+        if (! $module) {
+            return response()->json(['module' => null]);
+        }
 
         return response()->json([
-            'module' => $module ? $this->modulePayload($module) : null,
+            'module' => $statusOnly
+                ? $this->moduleStatusPayload($module)
+                : $this->modulePayload($module),
         ]);
     }
 
@@ -87,6 +102,21 @@ class ModuleController extends Controller
         return response()->json([
             'module' => $this->modulePayload($module),
         ]);
+    }
+
+    /**
+     * The status fields only - no module_json.
+     */
+    private function moduleStatusPayload(Module $module): array
+    {
+        return [
+            'id'               => $module->id,
+            'project_id'       => $module->project_id,
+            'status'           => $module->status,
+            'generation_error' => $module->generation_error ?? null,
+            'created_at'       => $module->created_at,
+            'updated_at'       => $module->updated_at,
+        ];
     }
 
     private function modulePayload(Module $module): array

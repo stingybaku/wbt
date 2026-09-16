@@ -55,6 +55,13 @@ export type ModuleResponse = {
   module: ModuleRecord | null;
 };
 
+/** What `GET /projects/:id/module?fields=status` returns: everything but the course itself. */
+export type ModuleStatusRecord = Omit<ModuleRecord, 'module_json'>;
+
+export type ModuleStatusResponse = {
+  module: ModuleStatusRecord | null;
+};
+
 export type FrontendTextsResponse = {
   route_key: string;
   texts: Record<string, string>;

@@ -9,14 +9,24 @@ import { ChangePasswordPage } from './components/ChangePasswordPage';
 import { ProjectsView } from './components/ProjectsView';
 import { ProjectDetailView } from './components/ProjectDetailView';
 import { CreateProjectWizard } from './components/CreateProjectWizard';
-import { ModuleReviewPage } from './components/ModuleEditorView';
-import { WBTPlayerPage } from './components/WBTPlayer';
-import { ViewerPlayerPage } from './components/ViewerPlayerPage';
-import { BillingView, BillingSuccessPage, BillingCancelPage } from './components/BillingView';
 import { useIdleTimeout } from './hooks/useIdleTimeout';
 import { login, register, resendVerification, fetchProjects } from './lib/api';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import type { Project } from './lib/types';
+
+// Split out of the initial bundle. The editor pulls in TipTap, and the two
+// players are large; none of them is needed to render the login or projects
+// screens, and an invited viewer on /view/:token needs only the player.
+const named = <T extends string>(key: T) =>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (m: any) => ({ default: m[key] });
+
+const ModuleReviewPage = lazy(() => import('./components/ModuleEditorView').then(named('ModuleReviewPage')));
+const WBTPlayerPage = lazy(() => import('./components/WBTPlayer').then(named('WBTPlayerPage')));
+const ViewerPlayerPage = lazy(() => import('./components/ViewerPlayerPage').then(named('ViewerPlayerPage')));
+const BillingView = lazy(() => import('./components/BillingView').then(named('BillingView')));
+const BillingSuccessPage = lazy(() => import('./components/BillingView').then(named('BillingSuccessPage')));
+const BillingCancelPage = lazy(() => import('./components/BillingView').then(named('BillingCancelPage')));
 
 const IDLE_TIMEOUT_MS = (Number(import.meta.env.VITE_IDLE_TIMEOUT_MINUTES) || 120) * 60 * 1000;
 
@@ -230,7 +240,9 @@ const router = createBrowserRouter([
 export function App() {
   return (
     <AuthProvider>
-      <RouterProvider router={router} />
+      <Suspense fallback={<div className="app-shell route-loading">Loading…</div>}>
+        <RouterProvider router={router} />
+      </Suspense>
     </AuthProvider>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { fetchProject, fetchModule, generateModule, fetchInvites, createInvite, revokeInvite, downloadCertificate, fetchProjectReport, QuotaError } from '../lib/api';
+import { fetchProject, fetchModule, fetchModuleStatus, generateModule, fetchInvites, createInvite, revokeInvite, downloadCertificate, fetchProjectReport, QuotaError } from '../lib/api';
 import type { ProjectReport } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import type { Project, ModuleRecord, ProjectInvite } from '../lib/types';
@@ -43,12 +43,22 @@ export function ProjectDetailView() {
     if (projectPollRef.current) { clearInterval(projectPollRef.current); projectPollRef.current = null; }
   }
 
+  // Polls status only. The full record - which carries the entire generated
+  // course - is fetched once, when generation actually finishes.
   async function pollModule() {
     if (!token || !id) return;
     try {
-      const res = await fetchModule(token, id);
-      setModule(res.module);
-      if (res.module?.status !== 'generating') stopPolling();
+      const res = await fetchModuleStatus(token, id);
+
+      if (res.module?.status === 'generating') {
+        setModule((prev) => (prev ? { ...prev, ...res.module } : prev));
+        return;
+      }
+
+      stopPolling();
+
+      const full = await fetchModule(token, id);
+      setModule(full.module);
     } catch {
       stopPolling();
     }

@@ -5,6 +5,7 @@ import type {
   FrontendTextsResponse,
   LoginResponse,
   ModuleResponse,
+  ModuleStatusResponse,
   NotificationsResponse,
   Plan,
   ProjectsResponse,
@@ -138,6 +139,14 @@ export function createProject(
 
 export function fetchModule(token: string, projectId: string): Promise<ModuleResponse> {
   return request<ModuleResponse>(`/projects/${projectId}/module`, { token });
+}
+
+/**
+ * Status without the course document. Used by the generation poll, which runs
+ * every few seconds and would otherwise re-download the whole module each tick.
+ */
+export function fetchModuleStatus(token: string, projectId: string): Promise<ModuleStatusResponse> {
+  return request<ModuleStatusResponse>(`/projects/${projectId}/module?fields=status`, { token });
 }
 
 export function updateModule(token: string, projectId: string, moduleJson: Module): Promise<ModuleResponse> {
