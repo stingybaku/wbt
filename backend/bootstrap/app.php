@@ -13,7 +13,6 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(\App\Http\Middleware\TrustProxies::class);
-        $middleware->append(\App\Http\Middleware\LocalCors::class);
         $middleware->alias([
             'quota' => \App\Http\Middleware\EnforceQuota::class,
         ]);
