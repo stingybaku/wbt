@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
+import logo from '../assets/logo.png';
 
 type RegisterFormProps = {
   loading: boolean;
@@ -22,7 +23,7 @@ export function RegisterForm({ loading, error, onSubmit }: RegisterFormProps) {
     <form className="card login-card" onSubmit={handleSubmit}>
       <section className="login-form-panel">
         <p className="login-kicker">GET STARTED</p>
-        <h1 className="login-brand">WBT Forge</h1>
+        <img src={logo} alt="WBT Forge" className="login-logo" />
         <p className="muted login-subtitle">Create your account to start building training modules.</p>
 
         {error && <div className="error-banner" style={{ marginBottom: '1rem' }}>{error}</div>}
@@ -85,7 +86,7 @@ export function RegisterForm({ loading, error, onSubmit }: RegisterFormProps) {
 
       <aside className="login-promo" aria-hidden="true">
         <div className="login-promo-content">
-          <p className="login-promo-brand">WBT Forge</p>
+          <img src={logo} alt="WBT Forge" className="login-promo-logo" />
           <p>Build compliant and engaging web-based training in minutes, with AI-assisted drafting and publishing.</p>
         </div>
       </aside>

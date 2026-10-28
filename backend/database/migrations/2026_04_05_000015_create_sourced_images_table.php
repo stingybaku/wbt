@@ -25,6 +25,12 @@ return new class extends Migration
             $table->index('source');
         });
 
+        // The dedicated extension migration is timestamped _000016, so it runs
+        // after this one and the `vector` type would not exist yet on a fresh
+        // database. Creating it here (idempotently) keeps `migrate` working
+        // from scratch without renaming a migration that has already run.
+        DB::statement('CREATE EXTENSION IF NOT EXISTS vector');
+
         DB::statement('ALTER TABLE sourced_images ADD COLUMN embedding vector(512)');
         DB::statement('CREATE INDEX sourced_images_embedding_idx ON sourced_images USING hnsw (embedding vector_cosine_ops)');
     }

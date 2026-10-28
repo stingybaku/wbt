@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import logo from '../assets/logo.png';
 import { fetchFrontendTexts } from '../lib/api';
 import { createTextResolver, type FrontendTextMap } from '../lib/text';
 
@@ -39,7 +40,7 @@ export function LoginForm({ loading, onSubmit }: LoginFormProps) {
     <form className="card login-card" onSubmit={handleSubmit}>
       <section className="login-form-panel">
         <p className="login-kicker">{t('auth.welcome_kicker', 'WELCOME TO')}</p>
-        <h1 className="login-brand">{t('auth.title', 'INFINITY')}</h1>
+        <img src={logo} alt="WBT Forge" className="login-logo" />
         <p className="muted login-subtitle">{t('auth.subtitle', 'Log in to get updates on the things that interest you.')}</p>
 
         <label className="login-field">

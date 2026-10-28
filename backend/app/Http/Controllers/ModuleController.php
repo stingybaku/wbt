@@ -3,17 +3,14 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Jobs\GenerationJob;
+use App\Jobs\SeedImageCacheJob;
 use App\Models\Module;
 use App\Models\Project;
-use App\Services\ImageCacheService;
 
 class ModuleController extends Controller
 {
-    public function __construct(private ImageCacheService $imageCache) {}
-
     public function generate(Request $request, string $projectId)
     {
         $data = $request->validate([
@@ -50,20 +47,31 @@ class ModuleController extends Controller
         return response()->json(['status' => 'generating'], 202);
     }
 
-    public function show(string $projectId)
+    public function show(Request $request, string $projectId)
     {
-        $module = Module::where('project_id', $projectId)->first();
+        Project::where('id', $projectId)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        // The editor polls this every 3 seconds while a module generates, and
+        // only needs the status. `?fields=status` leaves module_json - an
+        // entire generated course - out of both the query and the response.
+        $statusOnly = $request->query('fields') === 'status';
+
+        $columns = ['id', 'project_id', 'status', 'generation_error', 'created_at', 'updated_at'];
+
+        $module = Module::where('project_id', $projectId)
+            ->select($statusOnly ? $columns : array_merge($columns, ['module_json']))
+            ->first();
+
+        if (! $module) {
+            return response()->json(['module' => null]);
+        }
 
         return response()->json([
-            'module' => $module ? [
-                'id'               => $module->id,
-                'project_id'       => $module->project_id,
-                'status'           => $module->status,
-                'module_json'      => $module->module_json,
-                'generation_error' => $module->generation_error ?? null,
-                'created_at'       => $module->created_at,
-                'updated_at'       => $module->updated_at,
-            ] : null,
+            'module' => $statusOnly
+                ? $this->moduleStatusPayload($module)
+                : $this->modulePayload($module),
         ]);
     }
 
@@ -87,91 +95,40 @@ class ModuleController extends Controller
 
         $module->save();
 
-        $this->seedImageCache($data['module_json']);
+        // Queued: seeding calls the embeddings API once per new image, each with
+        // a 10 second timeout, and nothing in this response depends on it.
+        SeedImageCacheJob::dispatch($data['module_json']);
 
         return response()->json([
-            'module' => [
-                'id'               => $module->id,
-                'project_id'       => $module->project_id,
-                'status'           => $module->status,
-                'module_json'      => $module->module_json,
-                'generation_error' => $module->generation_error ?? null,
-                'created_at'       => $module->created_at,
-                'updated_at'       => $module->updated_at,
-            ],
+            'module' => $this->modulePayload($module),
         ]);
     }
 
     /**
-     * Cache any images present in the saved module JSON that are not already
-     * in the library. Only fires embedding API calls for genuinely new images
-     * (updateOrCreate is a no-op for existing ones).
-     *
-     * Images are matched to their attribution entry by checking whether the
-     * attribution's image_id appears in the URL — the same approach used
-     * throughout the codebase. The screen/item title becomes the cache topic.
+     * The status fields only - no module_json.
      */
-    private function seedImageCache(array $moduleJson): void
+    private function moduleStatusPayload(Module $module): array
     {
-        // Build id → attribution lookup across both sources
-        $attributionMap = [];
-        foreach (['unsplash', 'pexels'] as $source) {
-            foreach ($moduleJson['attribution'][$source] ?? [] as $entry) {
-                $attributionMap[(string) $entry['image_id']] = [
-                    'source'       => $source,
-                    'photographer' => $entry['photographer'] ?? null,
-                    'license'      => $entry['license'] ?? '',
-                ];
-            }
-        }
+        return [
+            'id'               => $module->id,
+            'project_id'       => $module->project_id,
+            'status'           => $module->status,
+            'generation_error' => $module->generation_error ?? null,
+            'created_at'       => $module->created_at,
+            'updated_at'       => $module->updated_at,
+        ];
+    }
 
-        if (empty($attributionMap)) return;
-
-        // Collect (query, url) pairs from screen images and click_reveal item images
-        $candidates = [];
-        foreach ($moduleJson['screens'] ?? [] as $screen) {
-            $url = $screen['image']['url'] ?? '';
-            if ($url && !str_contains($url, 'placeholder')) {
-                $candidates[] = ['query' => $screen['title'] ?? '', 'url' => $url];
-            }
-
-            foreach ($screen['interactions'] ?? [] as $interaction) {
-                if (($interaction['kind'] ?? '') !== 'click_reveal') continue;
-                foreach ($interaction['items'] ?? [] as $item) {
-                    $itemUrl = $item['image']['url'] ?? '';
-                    if ($itemUrl && !str_contains($itemUrl, 'placeholder')) {
-                        $candidates[] = ['query' => $item['title'] ?? '', 'url' => $itemUrl];
-                    }
-                }
-            }
-        }
-
-        foreach ($candidates as ['query' => $query, 'url' => $url]) {
-            if (!$query) continue;
-
-            // Match URL to its attribution entry via image_id substring
-            $attr = null;
-            foreach ($attributionMap as $imageId => $entry) {
-                if (str_contains($url, $imageId)) {
-                    $attr = array_merge(['external_id' => $imageId], $entry);
-                    break;
-                }
-            }
-
-            if (!$attr) continue;
-
-            try {
-                $this->imageCache->store(
-                    $query,
-                    $attr['source'],
-                    $attr['external_id'],
-                    $url,
-                    $attr['photographer'],
-                    $attr['license'],
-                );
-            } catch (\Throwable $e) {
-                Log::warning("ModuleController: failed to cache image for '{$query}': " . $e->getMessage());
-            }
-        }
+    private function modulePayload(Module $module): array
+    {
+        return [
+            'id'               => $module->id,
+            'project_id'       => $module->project_id,
+            'status'           => $module->status,
+            'module_json'      => $module->module_json,
+            'generation_error' => $module->generation_error ?? null,
+            'created_at'       => $module->created_at,
+            'updated_at'       => $module->updated_at,
+        ];
     }
 }

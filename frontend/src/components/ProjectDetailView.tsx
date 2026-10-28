@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { fetchProject, fetchModule, generateModule, fetchInvites, createInvite, revokeInvite, downloadCertificate, fetchProjectReport, QuotaError } from '../lib/api';
+import { fetchProject, fetchModule, fetchModuleStatus, generateModule, fetchInvites, createInvite, revokeInvite, downloadCertificate, fetchProjectReport, QuotaError } from '../lib/api';
 import type { ProjectReport } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import type { Project, ModuleRecord, ProjectInvite } from '../lib/types';
@@ -32,21 +32,33 @@ export function ProjectDetailView() {
     setSearchParams(tab === 'overview' ? {} : { tab });
   }
 
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef        = useRef<ReturnType<typeof setInterval> | null>(null);
+  const projectPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function stopPolling() {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   }
 
+  function stopProjectPolling() {
+    if (projectPollRef.current) { clearInterval(projectPollRef.current); projectPollRef.current = null; }
+  }
+
+  // Polls status only. The full record - which carries the entire generated
+  // course - is fetched once, when generation actually finishes.
   async function pollModule() {
     if (!token || !id) return;
     try {
-      const res = await fetchModule(token, id);
-      setModule(res.module);
-      if (res.module?.status !== 'generating') stopPolling();
+      const res = await fetchModuleStatus(token, id);
+
+      if (res.module?.status === 'generating') {
+        setModule((prev) => (prev ? { ...prev, ...res.module } : prev));
+        return;
+      }
+
+      stopPolling();
+
+      const full = await fetchModule(token, id);
+      setModule(full.module);
     } catch {
       stopPolling();
     }
@@ -55,6 +67,28 @@ export function ProjectDetailView() {
   function startPolling() {
     stopPolling();
     pollRef.current = setInterval(pollModule, POLL_INTERVAL_MS);
+  }
+
+  async function pollProject() {
+    if (!token || !id) return;
+    try {
+      const res = await fetchProject(token, id);
+      setProject(res.project);
+      if (res.project.source_status !== 'extracting') {
+        stopProjectPolling();
+        // Extraction done — generation was dispatched server-side; pick up module state
+        const moduleRes = await fetchModule(token, id);
+        setModule(moduleRes.module);
+        if (moduleRes.module?.status === 'generating') startPolling();
+      }
+    } catch {
+      stopProjectPolling();
+    }
+  }
+
+  function startProjectPolling() {
+    stopProjectPolling();
+    projectPollRef.current = setInterval(pollProject, POLL_INTERVAL_MS);
   }
 
   useEffect(() => {
@@ -69,12 +103,16 @@ export function ProjectDetailView() {
         setProject(projectRes.project);
         setModule(moduleRes.module);
         setInvites(invitesRes.invites);
-        if (moduleRes.module?.status === 'generating') startPolling();
+        if (moduleRes.module?.status === 'generating') {
+          startPolling();
+        } else if (projectRes.project.source_status === 'extracting') {
+          startProjectPolling();
+        }
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load project'))
       .finally(() => setLoading(false));
 
-    return () => stopPolling();
+    return () => { stopPolling(); stopProjectPolling(); };
   }, [token, id]);
 
   async function handleRetry() {
@@ -247,6 +285,8 @@ export function ProjectDetailView() {
                   hasSource={!!project.source_type}
                   retrying={retrying}
                   onRetry={handleRetry}
+                  sourceStatus={project.source_status}
+                  sourceError={project.source_error}
                 />
               </div>
 
@@ -301,13 +341,41 @@ export function ProjectDetailView() {
 // ─── Module status ────────────────────────────────────────────────────────────
 
 function ModuleStatusPanel({
-  module, hasSource, retrying, onRetry,
+  module, hasSource, retrying, onRetry, sourceStatus, sourceError,
 }: {
   module: ModuleRecord | null;
   hasSource: boolean;
   retrying: boolean;
   onRetry: () => void;
+  sourceStatus: 'extracting' | 'ready' | 'failed' | null;
+  sourceError: string | null;
 }) {
+  if (sourceStatus === 'extracting') {
+    return (
+      <div className="module-status-visual">
+        <div className="module-status-icon module-status-icon--generating">
+          <span className="generating-indicator">●</span>
+        </div>
+        <div className="module-status-text">
+          <strong>Extracting your document…</strong>
+          <p>This usually takes under a minute. The page will update automatically.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (sourceStatus === 'failed' && !module) {
+    return (
+      <div className="module-status-visual">
+        <div className="module-status-icon module-status-icon--failed">✕</div>
+        <div className="module-status-text">
+          <strong>Source extraction failed</strong>
+          <p>{sourceError ?? 'An unknown error occurred while processing your document.'}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!module && !hasSource) {
     return (
       <div className="module-status-visual">

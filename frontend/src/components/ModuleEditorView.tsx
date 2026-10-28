@@ -183,7 +183,12 @@ function ImageWidget({ url, alt, onPickerOpen, onLightbox }: {
     >
       {hasImage ? (
         <>
-          <img src={url} alt={alt ?? ''} className="image-widget-img" />
+          <img
+            src={url}
+            alt={alt ?? ''}
+            className="image-widget-img"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+          />
           <div className="image-widget-overlay">
             <button type="button" className="image-widget-change-btn"
               onClick={e => { e.stopPropagation(); onPickerOpen(); }}>

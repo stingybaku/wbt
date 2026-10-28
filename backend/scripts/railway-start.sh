@@ -66,7 +66,7 @@ fi
 # Persist runtime APP_KEY to .env so all request workers read a non-empty key.
 upsert_env "APP_KEY" "${APP_KEY}"
 
-# Persist runtime DB settings to .env to avoid SQLite fallback in request workers.
+# Persist runtime DB settings to .env so request workers never fall back to defaults.
 if [ -n "${DB_CONNECTION:-}" ]; then upsert_env "DB_CONNECTION" "${DB_CONNECTION}"; fi
 if [ -n "${DB_URL:-}" ]; then upsert_env "DB_URL" "${DB_URL}"; fi
 if [ -n "${DB_HOST:-}" ]; then upsert_env "DB_HOST" "${DB_HOST}"; fi
@@ -108,6 +108,13 @@ if [ -n "${STRIPE_PUBLISHABLE_KEY:-}" ]; then upsert_env "STRIPE_PUBLISHABLE_KEY
 if [ -n "${STRIPE_WEBHOOK_SECRET:-}" ]; then upsert_env "STRIPE_WEBHOOK_SECRET" "${STRIPE_WEBHOOK_SECRET}"; fi
 
 
+# Persist Cloudflare R2 keys.
+if [ -n "${CLOUDFLARE_R2_ACCESS_KEY_ID:-}" ]; then upsert_env "CLOUDFLARE_R2_ACCESS_KEY_ID" "${CLOUDFLARE_R2_ACCESS_KEY_ID}"; fi
+if [ -n "${CLOUDFLARE_R2_SECRET_ACCESS_KEY:-}" ]; then upsert_env "CLOUDFLARE_R2_SECRET_ACCESS_KEY" "${CLOUDFLARE_R2_SECRET_ACCESS_KEY}"; fi
+if [ -n "${CLOUDFLARE_R2_BUCKET:-}" ]; then upsert_env "CLOUDFLARE_R2_BUCKET" "${CLOUDFLARE_R2_BUCKET}"; fi
+if [ -n "${CLOUDFLARE_R2_ENDPOINT:-}" ]; then upsert_env "CLOUDFLARE_R2_ENDPOINT" "${CLOUDFLARE_R2_ENDPOINT}"; fi
+if [ -n "${CLOUDFLARE_R2_PUBLIC_URL:-}" ]; then upsert_env "CLOUDFLARE_R2_PUBLIC_URL" "${CLOUDFLARE_R2_PUBLIC_URL}"; fi
+
 # Persist AI / media keys.
 if [ -n "${ANTHROPIC_API_KEY:-}" ]; then upsert_env "ANTHROPIC_API_KEY" "${ANTHROPIC_API_KEY}"; fi
 if [ -n "${ANTHROPIC_MODEL:-}" ]; then upsert_env "ANTHROPIC_MODEL" "${ANTHROPIC_MODEL}"; fi
@@ -135,6 +142,20 @@ php artisan config:clear
 php artisan cache:clear || true
 php artisan package:discover --ansi
 
-php artisan queue:work --tries=1 --timeout=720 --sleep=3 --max-time=3600 &
+# Warm the framework caches. This must come after the .env writes above, since
+# config:cache snapshots configuration as it stands now and stops .env from
+# being read on subsequent boots of the request workers.
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
 
-exec php artisan serve --host=0.0.0.0 --port="${PORT:-8080}"
+# FrankenPHP (Caddy + PHP) serves the app. `php artisan serve` was PHP's
+# single-threaded development server: it handles one request at a time, so a
+# single slow request blocked every other user.
+#
+# SERVER_NAME as a bare port disables Caddy's automatic HTTPS, which is correct
+# here because Railway terminates TLS at its edge and forwards plain HTTP.
+export SERVER_NAME=":${PORT:-8080}"
+export SERVER_ROOT="/app/public"
+
+exec frankenphp run --config /etc/caddy/Caddyfile

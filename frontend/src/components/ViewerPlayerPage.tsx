@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import logo from '../assets/logo.png';
 import { fetchViewerModule, updateViewerProgress, verifyViewer } from '../lib/api';
 import type { ViewerQuestionAnswer } from '../lib/api';
 import { WBTPlayer } from './WBTPlayer';
@@ -107,7 +108,7 @@ export function ViewerPlayerPage() {
     return (
       <div className="viewer-gate-shell">
         <div className="viewer-gate-card">
-          <div className="viewer-gate-brand">WBT Forge</div>
+          <img src={logo} alt="WBT Forge" className="viewer-gate-logo" />
           <h1 className="viewer-gate-title">Access your course</h1>
           <p className="viewer-gate-subtitle">
             Enter your name and the email address to which this invitation was sent.

@@ -2,9 +2,12 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// Route::view rather than a closure so the route table stays serializable
+// for `php artisan route:cache`.
+Route::view('/', 'welcome');
 
-Route::get('/unsplash/search', [App\Http\Controllers\UnsplashController::class, 'search']);
-Route::get('/scorm/export', [App\Http\Controllers\ScormController::class, 'export']);
+// NOTE: /unsplash/search and /scorm/export previously lived here, outside any
+// auth middleware. Both are already registered under /api behind auth:sanctum,
+// and the frontend only ever calls the /api versions. They were removed because
+// unauthenticated callers could proxy the Unsplash API key and drive the SCORM
+// export's file and zip writes.

@@ -79,6 +79,12 @@ a { color: var(--accent); }
   background: var(--bg);
 }
 
+/* Suspense fallback while a lazily loaded route chunk is fetched. */
+.app-shell.route-loading {
+  color: var(--text-2);
+  font-size: 0.95rem;
+}
+
 /* Atmospheric glow orbs */
 .auth-shell::before,
 .auth-shell::after {
@@ -133,12 +139,43 @@ a { color: var(--accent); }
 }
 
 .top-nav-brand {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--accent);
   text-decoration: none;
-  letter-spacing: -0.01em;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* Crop into the logo content area; the source image has significant
+   gray padding around the actual mark — clip it to just the logo. */
+.top-nav-logo {
+  height: 36px;
+  width: 160px;
+  object-fit: cover;
+  object-position: 37% 52%;
+  border-radius: 6px;
+  display: block;
+}
+
+.login-logo {
+  width: 240px;
+  height: auto;
+  border-radius: 10px;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.login-promo-logo {
+  width: 200px;
+  height: auto;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  opacity: 0.9;
+}
+
+.viewer-gate-logo {
+  width: 200px;
+  height: auto;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
 }
 
 .top-nav-actions {
@@ -3095,6 +3132,13 @@ input[type="range"]:focus {
   gap: 0.5rem;
 }
 
+/* Standalone image rendered above interaction content on non-image_text screens */
+.player-screen-image {
+  margin: 0 0 1.25rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
 .player-image {
   width: 100%;
   max-height: 380px;
@@ -3679,7 +3723,7 @@ input[type="range"]:focus {
 
 /* perspective lives on the wrapper div, not the button, for reliable 3D */
 .player-flashcard-wrap {
-  height: 160px;
+  height: 200px;
   perspective: 1000px;
 }
 
@@ -3691,6 +3735,7 @@ input[type="range"]:focus {
   border: none;
   padding: 0;
   text-align: left;
+  white-space: normal;
 }
 
 .player-flashcard-inner {
@@ -3716,9 +3761,12 @@ input[type="range"]:focus {
   flex-direction: column;
   gap: 0.4rem;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  overflow: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
   min-width: 0;
 }
+
+.player-flashcard-face::-webkit-scrollbar { display: none; }
 
 .player-flashcard-front {
   background: white;
@@ -3743,10 +3791,6 @@ input[type="range"]:focus {
   font-size: 0.9rem;
   font-weight: 500;
   line-height: 1.5;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
   word-break: break-word;
   overflow-wrap: break-word;
   min-width: 0;
@@ -3941,7 +3985,12 @@ input[type="range"]:focus {
   align-items: flex-end;
   gap: 6px;
   padding: 0.5rem 0;
+  max-height: calc(100vh - 10rem);
+  overflow-y: auto;
+  scrollbar-width: none;
 }
+
+.player-sidenav::-webkit-scrollbar { display: none; }
 
 .player-sidenav-item {
   display: flex;

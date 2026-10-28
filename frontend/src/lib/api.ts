@@ -5,6 +5,7 @@ import type {
   FrontendTextsResponse,
   LoginResponse,
   ModuleResponse,
+  ModuleStatusResponse,
   NotificationsResponse,
   Plan,
   ProjectsResponse,
@@ -140,6 +141,14 @@ export function fetchModule(token: string, projectId: string): Promise<ModuleRes
   return request<ModuleResponse>(`/projects/${projectId}/module`, { token });
 }
 
+/**
+ * Status without the course document. Used by the generation poll, which runs
+ * every few seconds and would otherwise re-download the whole module each tick.
+ */
+export function fetchModuleStatus(token: string, projectId: string): Promise<ModuleStatusResponse> {
+  return request<ModuleStatusResponse>(`/projects/${projectId}/module?fields=status`, { token });
+}
+
 export function updateModule(token: string, projectId: string, moduleJson: Module): Promise<ModuleResponse> {
   return request<ModuleResponse>(`/projects/${projectId}/module`, {
     method: 'PUT',
@@ -163,14 +172,16 @@ export function generateModule(
 export type UploadSourceResponse = {
   source_type: 'file' | 'url';
   source_url: string | null;
-  character_count: number;
+  character_count: number | null;
   truncated: boolean;
+  status: 'extracting' | 'ready';
 };
 
 export function uploadSource(
   token: string,
   projectId: string,
   source: { type: 'file'; file: File } | { type: 'url'; url: string },
+  genParams: { duration_minutes: number; learning_objectives?: string; assessment_count: number },
   onProgress?: (pct: number) => void
 ): Promise<UploadSourceResponse> {
   return new Promise((resolve, reject) => {
@@ -181,6 +192,9 @@ export function uploadSource(
     } else {
       form.append('url', source.url);
     }
+    form.append('duration_minutes', String(genParams.duration_minutes));
+    if (genParams.learning_objectives) form.append('learning_objectives', genParams.learning_objectives);
+    form.append('assessment_count', String(genParams.assessment_count));
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${apiBase}/projects/${projectId}/source`);

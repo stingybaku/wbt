@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\Project;
 
@@ -12,25 +13,61 @@ class ProjectsController extends Controller
     {
         $projects = Project::where('user_id', $request->user()->id)
             ->orderByDesc('created_at')
-            ->with(['modules' => fn($q) => $q->select('project_id', 'status', 'cover_image_url', 'module_json')])
-            ->withCount(['invites' => fn($q) => $q->whereNull('revoked_at')->where('expires_at', '>', now())])
+            // Only the three summary values are read from module_json, so they
+            // are extracted in SQL. Selecting the whole document here meant the
+            // dashboard transferred and decoded every generated course in full
+            // just to render a summary line and a screen count.
+            ->with(['modules' => fn ($q) => $q->select(array_merge(
+                ['project_id', 'status', 'cover_image_url'],
+                $this->moduleSummaryColumns()
+            ))])
+            ->withCount(['invites' => fn ($q) => $q->whereNull('revoked_at')->where('expires_at', '>', now())])
             ->get()
             ->map(function ($project) {
                 $module = $project->modules->first();
-                $moduleJson = $module?->module_json;
                 $data = $project->toArray();
                 unset($data['modules']);
+
                 $data['cover_image_url']  = $module?->cover_image_url;
                 $data['module_status']    = $module?->status;
-                $data['source_summary']   = $moduleJson['meta']['summary'] ?? $moduleJson['meta']['source_summary'] ?? null;
-                $data['duration_minutes'] = $moduleJson['meta']['duration_minutes'] ?? null;
-                $data['screen_count']     = isset($moduleJson['screens']) ? count($moduleJson['screens']) : null;
+                $data['source_summary']   = $module?->meta_summary ?? $module?->meta_source_summary;
+                $data['duration_minutes'] = $this->asIntOrNull($module?->meta_duration_minutes);
+                $data['screen_count']     = $this->asIntOrNull($module?->screen_count);
                 $data['invite_count']     = $project->invites_count;
                 unset($data['invites_count']);
+
                 return $data;
             });
 
         return response()->json(['projects' => $projects]);
+    }
+
+    /**
+     * SQL expressions pulling the dashboard's summary fields out of module_json
+     * without selecting the document itself. Each returns null when module_json
+     * is null (a module still generating) or the key is absent, which is what
+     * the frontend checks for.
+     *
+     * @return array<int, \Illuminate\Contracts\Database\Query\Expression>
+     */
+    private function moduleSummaryColumns(): array
+    {
+        return [
+            DB::raw("module_json -> 'meta' ->> 'summary' as meta_summary"),
+            DB::raw("module_json -> 'meta' ->> 'source_summary' as meta_source_summary"),
+            DB::raw("module_json -> 'meta' ->> 'duration_minutes' as meta_duration_minutes"),
+            DB::raw("case when json_typeof(module_json -> 'screens') = 'array'
+                          then json_array_length(module_json -> 'screens')
+                     end as screen_count"),
+        ];
+    }
+
+    /**
+     * ->> always yields text, and the frontend types these as number|null.
+     */
+    private function asIntOrNull(mixed $value): ?int
+    {
+        return $value === null || $value === '' ? null : (int) $value;
     }
 
     public function store(Request $request)
@@ -54,7 +91,7 @@ class ProjectsController extends Controller
     {
         $project = Project::where('id', $id)
             ->where('user_id', $request->user()->id)
-            ->with(['modules' => fn($q) => $q->select('project_id', 'status', 'cover_image_url')])
+            ->with(['modules' => fn ($q) => $q->select('project_id', 'status', 'cover_image_url')])
             ->firstOrFail();
 
         $module = $project->modules->first();

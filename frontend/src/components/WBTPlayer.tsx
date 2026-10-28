@@ -329,6 +329,12 @@ function PlayerScreenNav({ screens, currentIndex, visitedSet, onJump }: {
   visitedSet: Set<number>;
   onJump: (index: number) => void;
 }) {
+  const activeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [currentIndex]);
+
   return (
     <nav className="player-sidenav" aria-label="Course screens">
       {screens.map((screen, i) => {
@@ -338,6 +344,7 @@ function PlayerScreenNav({ screens, currentIndex, visitedSet, onJump }: {
         return (
           <button
             key={screen.id}
+            ref={isActive ? activeRef : undefined}
             type="button"
             className={`player-sidenav-item${isActive ? ' active' : isVisited ? ' visited' : ' future'}`}
             onClick={() => canJump && onJump(i)}
@@ -481,25 +488,56 @@ function ScreenRenderer({
           {(screen.type === 'text' || screen.type === 'image_text') && (
             <ImageTextScreen screen={screen} attribution={imageAttribution ?? null} />
           )}
-          {screen.type === 'accordion' && <AccordionScreen screen={screen} />}
-          {screen.type === 'click_reveal' && <ClickRevealScreen screen={screen} />}
-          {screen.type === 'question' && (
-            <QuestionScreen
-              screen={screen}
-              savedAnswer={questionAnswer}
-              onAnswered={answer => onAnswered(screen.id, answer)}
-            />
+          {screen.type === 'accordion' && (
+            <>
+              {screen.image && <ScreenImage image={screen.image} attribution={imageAttribution ?? null} />}
+              <AccordionScreen screen={screen} />
+            </>
           )}
-          {screen.type === 'tabs' && <TabsScreen screen={screen} />}
-          {screen.type === 'process' && <ProcessScreen screen={screen} />}
-          {screen.type === 'flashcard' && <FlashcardScreen screen={screen} />}
+          {screen.type === 'click_reveal' && (
+            <>
+              {screen.image && <ScreenImage image={screen.image} attribution={imageAttribution ?? null} />}
+              <ClickRevealScreen screen={screen} />
+            </>
+          )}
+          {screen.type === 'question' && (
+            <>
+              {screen.image && <ScreenImage image={screen.image} attribution={imageAttribution ?? null} />}
+              <QuestionScreen
+                screen={screen}
+                savedAnswer={questionAnswer}
+                onAnswered={answer => onAnswered(screen.id, answer)}
+              />
+            </>
+          )}
+          {screen.type === 'tabs' && (
+            <>
+              {screen.image && <ScreenImage image={screen.image} attribution={imageAttribution ?? null} />}
+              <TabsScreen screen={screen} />
+            </>
+          )}
+          {screen.type === 'process' && (
+            <>
+              {screen.image && <ScreenImage image={screen.image} attribution={imageAttribution ?? null} />}
+              <ProcessScreen screen={screen} />
+            </>
+          )}
+          {screen.type === 'flashcard' && (
+            <>
+              {screen.image && <ScreenImage image={screen.image} attribution={imageAttribution ?? null} />}
+              <FlashcardScreen screen={screen} />
+            </>
+          )}
           {screen.type === 'video' && <VideoScreen screen={screen} />}
           {screen.type === 'scenario' && (
-            <ScenarioScreen
-              screen={screen}
-              savedAnswer={questionAnswer}
-              onAnswered={answer => onAnswered(screen.id, answer)}
-            />
+            <>
+              {screen.image && <ScreenImage image={screen.image} attribution={imageAttribution ?? null} />}
+              <ScenarioScreen
+                screen={screen}
+                savedAnswer={questionAnswer}
+                onAnswered={answer => onAnswered(screen.id, answer)}
+              />
+            </>
           )}
         </article>
       </main>
@@ -526,9 +564,36 @@ function ScreenRenderer({
   );
 }
 
-// ─── Image + text screen ──────────────────────────────────────────────────────
+// ─── Shared screen image ──────────────────────────────────────────────────────
 
 type AttributionEntry = Module['attribution']['unsplash'][number];
+
+function ScreenImage({ image, attribution }: {
+  image: NonNullable<Screen['image']>;
+  attribution: AttributionEntry | null;
+}) {
+  return (
+    <figure className="player-screen-image">
+      <img
+        src={image.url}
+        alt={image.alt_text}
+        className="player-image"
+        onError={(e) => { (e.currentTarget as HTMLImageElement).parentElement!.style.display = 'none'; }}
+      />
+      {attribution && (
+        <figcaption className="player-attribution">
+          Photo by{' '}
+          <a href={attribution.url} target="_blank" rel="noopener noreferrer">
+            {attribution.photographer}
+          </a>{' '}
+          on {attribution.license.replace(' License', '')}
+        </figcaption>
+      )}
+    </figure>
+  );
+}
+
+// ─── Image + text screen ──────────────────────────────────────────────────────
 
 function ImageTextScreen({
   screen,
@@ -541,7 +606,12 @@ function ImageTextScreen({
 
   const imageEl = screen.image ? (
     <figure className="player-figure">
-      <img src={screen.image.url} alt={screen.image.alt_text} className="player-image" />
+      <img
+        src={screen.image.url}
+        alt={screen.image.alt_text}
+        className="player-image"
+        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+      />
       {attribution && (
         <figcaption className="player-attribution">
           Photo by{' '}
