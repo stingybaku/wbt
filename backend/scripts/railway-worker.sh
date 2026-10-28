@@ -103,9 +103,39 @@ mkdir -p /tmp/health
 echo '<?php http_response_code(200); echo "OK";' > /tmp/health/index.php
 php -S "0.0.0.0:${PORT:-8080}" -t /tmp/health &>/dev/null &
 
-exec php artisan queue:work \
-  --tries=1 \
-  --timeout=720 \
-  --sleep=3 \
-  --max-jobs=50 \
-  --memory=256
+# queue:work exits on its own by design: with status 0 after --max-jobs (and
+# after `php artisan queue:restart`), and with 12 after --memory. A Railway
+# ON_FAILURE restart policy does not restart a clean exit, so with a bare
+# `exec` the worker stopped for good after 50 jobs and generations queued
+# with nothing to run them until the next deploy. Restart it here instead.
+#
+# SIGTERM (Railway stopping the container) is forwarded to queue:work, which
+# then finishes its current job before exiting - the same graceful shutdown
+# `exec` gave us - and the loop ends rather than restarting it.
+stopping=0
+child=0
+trap 'stopping=1; if [ "$child" -ne 0 ]; then kill -TERM "$child" 2>/dev/null || true; fi' TERM INT
+
+while [ "$stopping" -eq 0 ]; do
+  php artisan queue:work \
+    --tries=1 \
+    --timeout=720 \
+    --sleep=3 \
+    --max-jobs=50 \
+    --memory=256 &
+  child=$!
+
+  status=0
+  wait "$child" || status=$?
+
+  if [ "$stopping" -eq 1 ]; then
+    # wait returns as soon as the trap fires; wait again for the job to finish.
+    wait "$child" 2>/dev/null || true
+    break
+  fi
+
+  echo "Worker: queue:work exited with status ${status}; restarting in 2s." >&2
+  sleep 2
+done
+
+echo "Worker: stopped."
