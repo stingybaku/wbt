@@ -66,7 +66,7 @@ fi
 # Persist runtime APP_KEY to .env so all request workers read a non-empty key.
 upsert_env "APP_KEY" "${APP_KEY}"
 
-# Persist runtime DB settings to .env to avoid SQLite fallback in request workers.
+# Persist runtime DB settings to .env so request workers never fall back to defaults.
 if [ -n "${DB_CONNECTION:-}" ]; then upsert_env "DB_CONNECTION" "${DB_CONNECTION}"; fi
 if [ -n "${DB_URL:-}" ]; then upsert_env "DB_URL" "${DB_URL}"; fi
 if [ -n "${DB_HOST:-}" ]; then upsert_env "DB_HOST" "${DB_HOST}"; fi

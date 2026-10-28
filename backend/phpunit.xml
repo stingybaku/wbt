@@ -22,7 +22,19 @@
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+        <!--
+            Tests run on PostgreSQL, like every environment the app deploys to.
+            Host, port and credentials come from .env; the database name is
+            forced so RefreshDatabase - which drops every table - can only ever
+            touch the dedicated test database. DB_URL is blanked for the same
+            reason, since a URL would take precedence over the database name.
+            Create it once with:  createdb wbt_testing
+            The server needs pgvector available (e.g. the pgvector/pgvector
+            image); the migrations enable the extension themselves.
+        -->
+        <env name="DB_CONNECTION" value="pgsql" force="true"/>
+        <env name="DB_DATABASE" value="wbt_testing" force="true"/>
+        <env name="DB_URL" value="" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
