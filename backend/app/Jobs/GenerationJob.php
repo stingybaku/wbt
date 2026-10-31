@@ -80,7 +80,11 @@ class GenerationJob implements ShouldQueue
                 'id'         => 'evt_' . Str::uuid(),
                 'project_id' => $this->projectId,
                 'type'       => 'module.generated',
-                'meta'       => ['screen_count' => count($moduleJson['screens'] ?? [])],
+                'meta'       => [
+                    'screen_count' => count($moduleJson['screens'] ?? []),
+                    'prompt'       => $service->promptId(),
+                    'model'        => $service->model(),
+                ],
             ]);
 
             Log::info("GenerationJob succeeded for project {$this->projectId}");
@@ -92,7 +96,11 @@ class GenerationJob implements ShouldQueue
                 'id'         => 'evt_' . Str::uuid(),
                 'project_id' => $this->projectId,
                 'type'       => 'module.failed',
-                'meta'       => ['error' => $e->getMessage()],
+                'meta'       => [
+                    'error'  => $e->getMessage(),
+                    'prompt' => $service->promptId(),
+                    'model'  => $service->model(),
+                ],
             ]);
 
             Log::error("GenerationJob failed for project {$this->projectId}: " . $e->getMessage());
