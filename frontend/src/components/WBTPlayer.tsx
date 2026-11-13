@@ -199,13 +199,13 @@ export function WBTPlayer({
   initialAnswers?: Record<string, QuestionAnswer>;
   initialVisited?: number[];
   completedAt?: string;
-  onScreenChange?: (index: number, total: number, visited: number[]) => void;
+  onScreenChange?: (index: number, total: number, visited: number[], complete?: boolean) => void;
   onAnswered?: (screenId: string, answer: QuestionAnswer) => void;
 }) {
   const screens = module.screens;
 
   // ── Restore from localStorage on first mount ──
-  const saved = useMemo(() => loadProgress(projectId), [projectId]);
+  const saved = useMemo(() => viewerMode ? null : loadProgress(projectId), [projectId, viewerMode]);
 
   const [phase, setPhase] = useState<PlayerPhase>(() =>
     (saved?.screenIndex ?? initialScreenIndex) > 0 ? 'training' : 'cover'
@@ -242,7 +242,7 @@ export function WBTPlayer({
       goTo(screenIndex + 1);
     } else {
       setPhase('complete');
-      onScreenChange?.(screens.length - 1, screens.length, [...visitedSet]);
+      onScreenChange?.(screens.length - 1, screens.length, [...visitedSet], true);
     }
   }
 

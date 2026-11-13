@@ -280,6 +280,7 @@ export function updateViewerProgress(
     total_screens: number;
     question_answers?: Record<string, ViewerQuestionAnswer>;
     visited_screens?: number[];
+    complete?: boolean;
   }
 ): Promise<{ ok: boolean }> {
   return request(`/view/${viewerToken}/progress`, { method: 'POST', body: payload });

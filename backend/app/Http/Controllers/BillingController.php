@@ -42,30 +42,30 @@ class BillingController extends Controller
             'plan_id' => 'required|string|exists:plans,id',
         ]);
 
-        $plan        = Plan::findOrFail($data['plan_id']);
-        $user        = $request->user();
+        $plan = Plan::findOrFail($data['plan_id']);
+        $user = $request->user();
         $frontendUrl = config('app.frontend_url', config('app.url'));
 
-        if (!$plan->isOneTime()) {
+        if (! $plan->isOneTime()) {
             return response()->json(['message' => 'Subscription plans are not yet available.'], 422);
         }
 
         $result = $this->stripe->createCheckoutSession(
             $plan->name,
             $plan->price_cents,
-            $frontendUrl . '/billing/success?session_id={CHECKOUT_SESSION_ID}',
-            $frontendUrl . '/billing/cancel',
+            $frontendUrl.'/billing/success?session_id={CHECKOUT_SESSION_ID}',
+            $frontendUrl.'/billing/cancel',
             $user->email
         );
 
         Subscription::create([
-            'id'                   => 'sub_' . Str::uuid(),
-            'user_id'              => $user->id,
-            'plan_id'              => $plan->id,
-            'status'               => 'pending',
-            'stripe_session_id'    => $result['session_id'],
+            'id' => 'sub_'.Str::uuid(),
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status' => 'pending',
+            'stripe_session_id' => $result['session_id'],
             'current_period_start' => now(),
-            'current_period_end'   => null,
+            'current_period_end' => null,
         ]);
 
         return response()->json(['checkout_url' => $result['checkout_url']]);
@@ -79,15 +79,15 @@ class BillingController extends Controller
             ->orderByDesc('created_at')
             ->get()
             ->map(fn ($t) => [
-                'id'               => $t->id,
-                'plan_name'        => $t->plan_name,
-                'plan_type'        => $t->plan_type,
+                'id' => $t->id,
+                'plan_name' => $t->plan_name,
+                'plan_type' => $t->plan_type,
                 'amount_formatted' => $t->amountFormatted(),
-                'amount_cents'     => $t->amount_cents,
-                'status'           => $t->status,
-                'description'      => $t->description,
+                'amount_cents' => $t->amount_cents,
+                'status' => $t->status,
+                'description' => $t->description,
                 'payment_reference' => $t->payment_reference,
-                'created_at'       => $t->created_at->toIso8601String(),
+                'created_at' => $t->created_at->toIso8601String(),
             ]);
 
         return response()->json(['transactions' => $transactions]);
@@ -117,12 +117,12 @@ class BillingController extends Controller
     {
         $subscription = $this->activeSubscription($request->user()->id);
 
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json(['message' => 'No active subscription.'], 404);
         }
 
         $subscription->update([
-            'status'       => 'cancelled',
+            'status' => 'cancelled',
             'cancelled_at' => now(),
         ]);
 
@@ -143,23 +143,23 @@ class BillingController extends Controller
     private function formatSubscription(Subscription $sub): array
     {
         $data = [
-            'id'                 => $sub->id,
-            'plan'               => [
-                'id'             => $sub->plan->id,
-                'name'           => $sub->plan->name,
-                'type'           => $sub->plan->type,
-                'module_limit'   => $sub->plan->module_limit,
-                'seat_limit'     => $sub->plan->seat_limit,
+            'id' => $sub->id,
+            'plan' => [
+                'id' => $sub->plan->id,
+                'name' => $sub->plan->name,
+                'type' => $sub->plan->type,
+                'module_limit' => $sub->plan->module_limit,
+                'seat_limit' => $sub->plan->seat_limit,
                 'billing_period' => $sub->plan->billing_period,
-                'rollover'       => $sub->plan->rollover,
+                'rollover' => $sub->plan->rollover,
             ],
-            'status'             => $sub->status,
-            'modules_used'       => $sub->modules_used,
-            'modules_available'  => $sub->modulesAvailable(),
-            'seats_used'         => $sub->seatsUsed(),
-            'seats_available'    => $sub->seatsAvailable(),
+            'status' => $sub->status,
+            'modules_used' => $sub->modules_used,
+            'modules_available' => $sub->modulesAvailable(),
+            'seats_used' => $sub->seatsUsed(),
+            'seats_available' => $sub->seatsAvailable(),
             'current_period_end' => $sub->current_period_end?->toIso8601String(),
-            'cancelled_at'       => $sub->cancelled_at?->toIso8601String(),
+            'cancelled_at' => $sub->cancelled_at?->toIso8601String(),
         ];
 
         if ($sub->plan->isOneTime()) {
@@ -171,15 +171,15 @@ class BillingController extends Controller
                 ->orderBy('created_at')
                 ->get()
                 ->map(fn ($p) => [
-                    'id'          => $p->id,
-                    'title'       => $p->title,
-                    'seats_used'  => $p->invites->count(),
+                    'id' => $p->id,
+                    'title' => $p->title,
+                    'seats_used' => $p->invites->count(),
                     'seats_limit' => $seatLimit,
                 ])
                 ->values()
                 ->toArray();
 
-            $totalSlots = $sub->modulesAvailable() + $sub->modules_used;
+            $totalSlots = $sub->modulesAvailable() + $sub->modules_used + $sub->modules_reserved;
             $emptySlots = max(0, $totalSlots - count($projects));
             for ($i = 0; $i < $emptySlots; $i++) {
                 $projects[] = ['id' => null, 'title' => null, 'seats_used' => 0, 'seats_limit' => $seatLimit];

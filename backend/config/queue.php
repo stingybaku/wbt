@@ -36,10 +36,12 @@ return [
 
         'database' => [
             'driver' => 'database',
-            'connection' => env('DB_QUEUE_CONNECTION'),
+            // Critical jobs are an outbox: enqueue on the application's own
+            // connection so their inserts commit or roll back with domain data.
+            'connection' => null,
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            'retry_after' => max(780, (int) env('DB_QUEUE_RETRY_AFTER', 780)),
             'after_commit' => false,
         ],
 

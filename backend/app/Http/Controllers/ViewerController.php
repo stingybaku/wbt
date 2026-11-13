@@ -20,13 +20,13 @@ class ViewerController extends Controller
             ->with(['project.modules', 'progress'])
             ->first();
 
-        if (!$invite || !$invite->isActive()) {
+        if (! $invite || ! $invite->isActive()) {
             return response()->json(['message' => 'This link is invalid or has expired.'], 403);
         }
 
         $module = $invite->project->modules->first();
 
-        if (!$module || $module->status !== 'generated') {
+        if (! $module || $module->status !== 'generated') {
             return response()->json(['message' => 'This course is not available yet.'], 404);
         }
 
@@ -34,14 +34,14 @@ class ViewerController extends Controller
 
         return response()->json([
             'project_title' => $invite->project->title,
-            'module'        => $module->module_json,
-            'expires_at'    => $invite->expires_at->toIso8601String(),
-            'progress'      => $progress ? [
+            'module' => $module->module_json,
+            'expires_at' => $invite->expires_at->toIso8601String(),
+            'progress' => $progress ? [
                 'current_screen_index' => $progress->current_screen_index,
-                'total_screens'        => $progress->total_screens,
-                'completed_at'         => $progress->completed_at?->toIso8601String(),
-                'question_answers'     => $progress->question_answers ?? [],
-                'visited_screens'      => $progress->visited_screens ?? [],
+                'total_screens' => $progress->total_screens,
+                'completed_at' => $progress->completed_at?->toIso8601String(),
+                'question_answers' => $progress->question_answers ?? [],
+                'visited_screens' => $progress->visited_screens ?? [],
             ] : null,
         ]);
     }
@@ -53,12 +53,12 @@ class ViewerController extends Controller
     {
         $data = $request->validate([
             'email' => 'required|email',
-            'name'  => 'required|string|max:255',
+            'name' => 'required|string|max:255',
         ]);
 
         $invite = ProjectInvite::where('token', $token)->first();
 
-        if (!$invite || !$invite->isActive()) {
+        if (! $invite || ! $invite->isActive()) {
             return response()->json(['message' => 'This link is invalid or has expired.'], 403);
         }
 
@@ -73,12 +73,12 @@ class ViewerController extends Controller
             ['viewer_name' => trim($data['name'])]
         );
 
-        if (!$alreadyStarted) {
+        if (! $alreadyStarted) {
             Event::create([
-                'id'         => 'evt_' . Str::uuid(),
+                'id' => 'evt_'.Str::uuid(),
                 'project_id' => $invite->project_id,
-                'type'       => 'viewer.started',
-                'meta'       => ['email' => $invite->email, 'viewer_name' => trim($data['name'])],
+                'type' => 'viewer.started',
+                'meta' => ['email' => $invite->email, 'viewer_name' => trim($data['name'])],
             ]);
         }
 
@@ -90,59 +90,43 @@ class ViewerController extends Controller
      */
     public function updateProgress(Request $request, string $token)
     {
-        $invite = ProjectInvite::where('token', $token)->first();
-
-        if (!$invite || !$invite->isActive()) {
-            return response()->json(['message' => 'Invalid or expired link.'], 403);
-        }
-
         $data = $request->validate([
             'current_screen_index' => 'required|integer|min:0',
-            'total_screens'        => 'required|integer|min:1',
-            'question_answers'     => 'sometimes|array',
-            'visited_screens'      => 'sometimes|array',
-            'visited_screens.*'    => 'integer|min:0',
+            'total_screens' => 'sometimes|integer|min:1',
+            'question_answers' => 'sometimes|array|max:200',
+            'question_answers.*' => 'array',
+            'visited_screens' => 'sometimes|array|max:200',
+            'visited_screens.*' => 'integer|min:0',
+            'complete' => 'sometimes|boolean',
         ]);
 
-        $isComplete = $data['current_screen_index'] >= $data['total_screens'] - 1;
-
-        $existing         = InviteProgress::where('invite_id', $invite->id)->first();
-        $alreadyCompleted = $existing?->completed_at !== null;
-
-        $update = [
-            'current_screen_index' => $data['current_screen_index'],
-            'total_screens'        => $data['total_screens'],
-            'last_active_at'       => now(),
-            // Never clear a completion — once completed, always completed.
-            'completed_at'         => $alreadyCompleted
-                ? $existing->completed_at
-                : ($isComplete ? now() : null),
-        ];
-
-        if (array_key_exists('question_answers', $data)) {
-            $update['question_answers'] = $data['question_answers'];
-        }
-
-        if (array_key_exists('visited_screens', $data)) {
-            $update['visited_screens'] = $data['visited_screens'];
-        }
-
-        InviteProgress::updateOrCreate(['invite_id' => $invite->id], $update);
-
-        if ($isComplete && !$alreadyCompleted) {
-            \App\Jobs\GenerateCertificateJob::dispatch($invite->id);
-
-            Event::create([
-                'id'         => 'evt_' . Str::uuid(),
-                'project_id' => $invite->project_id,
-                'type'       => 'viewer.completed',
-                'meta'       => [
-                    'email'       => $invite->email,
-                    'viewer_name' => $existing?->viewer_name,
-                ],
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($token, $data) {
+            $invite = ProjectInvite::where('token', $token)->lockForUpdate()->first();
+            abort_unless($invite && $invite->isActive(), 403, 'Invalid or expired link.');
+            $module = $invite->project->modules()->where('status', 'generated')->first();
+            abort_unless($module, 404, 'This course is not available yet.');
+            $progress = InviteProgress::where('invite_id', $invite->id)->lockForUpdate()->first();
+            abort_unless($progress && $progress->viewer_name, 403, 'Verify your invitation before saving progress.');
+            $update = app(\App\Services\LearningProgress::class)->update(
+                $module->module_json['screens'] ?? [], $progress->visited_screens ?? [],
+                $progress->question_answers ?? [], $data
+            );
+            $newCompletion = $update['complete'] && ! $progress->completed_at;
+            unset($update['complete']);
+            $progress->update($update + [
+                'last_active_at' => now(),
+                'completed_at' => $progress->completed_at ?? ($newCompletion ? now() : null),
             ]);
-        }
+            if ($newCompletion) {
+                \App\Jobs\GenerateCertificateJob::dispatch($invite->id)->onConnection('database')->beforeCommit();
+                Event::create([
+                    'id' => 'evt_'.Str::uuid(), 'project_id' => $invite->project_id,
+                    'type' => 'viewer.completed',
+                    'meta' => ['email' => $invite->email, 'viewer_name' => $progress->viewer_name],
+                ]);
+            }
 
-        return response()->json(['ok' => true]);
+            return response()->json(['ok' => true, 'completed_at' => $progress->completed_at?->toIso8601String()]);
+        }, 3);
     }
 }

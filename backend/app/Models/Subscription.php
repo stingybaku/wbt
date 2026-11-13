@@ -8,20 +8,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Subscription extends Model
 {
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [
         'id', 'user_id', 'plan_id', 'status',
         'paypal_order_id', 'paypal_subscription_id', 'stripe_session_id',
-        'modules_used', 'modules_rolled_over', 'bonus_modules', 'bonus_seats',
+        'modules_used', 'modules_reserved', 'modules_rolled_over', 'bonus_modules', 'bonus_seats',
         'current_period_start', 'current_period_end',
         'cancelled_at',
     ];
 
     protected $casts = [
         'current_period_start' => 'datetime',
-        'current_period_end'   => 'datetime',
-        'cancelled_at'         => 'datetime',
+        'current_period_end' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     public function user(): BelongsTo
@@ -42,7 +43,8 @@ class Subscription extends Model
     public function modulesAvailable(): int
     {
         $limit = $this->plan->module_limit + ($this->bonus_modules ?? 0) + $this->modules_rolled_over;
-        return max(0, $limit - $this->modules_used);
+
+        return max(0, $limit - $this->modules_used - ($this->modules_reserved ?? 0));
     }
 
     public function seatsUsed(): int

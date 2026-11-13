@@ -35,9 +35,7 @@ class ProjectSourceController extends Controller
             'assessment_count'    => 'nullable|integer|min:0|max:10',
         ]);
 
-        $project = Project::where('id', $projectId)
-            ->where('user_id', $request->user()->id)
-            ->firstOrFail();
+        $project = $this->ownedProject($projectId);
 
         $sourceType = $request->input('source_type');
 

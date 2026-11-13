@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use App\Models\Event;
-use App\Models\Project;
 
 class EventsController extends Controller
 {
@@ -13,20 +12,20 @@ class EventsController extends Controller
     {
         $data = $request->validate([
             'type' => 'required|string',
-            'meta' => 'nullable|array'
+            'meta' => 'nullable|array',
         ]);
 
-        $project = Project::findOrFail($projectId);
+        $project = $this->ownedProject($projectId);
         $event = Event::create([
-            'id' => 'evt_' . Str::uuid()->toString(),
+            'id' => 'evt_'.Str::uuid()->toString(),
             'project_id' => $project->id,
             'type' => $data['type'],
-            'meta' => $data['meta'] ?? []
+            'meta' => $data['meta'] ?? [],
         ]);
 
         return response()->json([
             'project_id' => $projectId,
-            'event' => $event
+            'event' => $event,
         ], 201);
     }
 }

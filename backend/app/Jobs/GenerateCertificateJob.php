@@ -21,29 +21,37 @@ class GenerateCertificateJob implements ShouldQueue
 
     public function handle(): void
     {
-        $progress = InviteProgress::with(['invite.project', 'invite.invitedBy'])
-            ->where('invite_id', $this->inviteId)
-            ->firstOrFail();
+        \Illuminate\Support\Facades\DB::transaction(function () {
+            $progress = InviteProgress::with(['invite.project', 'invite.invitedBy'])
+                ->where('invite_id', $this->inviteId)
+                ->lockForUpdate()->firstOrFail();
 
-        $verificationCode = strtoupper(substr(
-            hash('sha256', $progress->invite->token . $progress->completed_at->toIso8601String()),
-            0, 12
-        ));
+            if (! $progress->completed_at || $progress->certificate_path) {
+                return;
+            }
 
-        $pdf = Pdf::loadView('certificates.completion', [
-            'viewer_name'       => $progress->viewer_name ?? $progress->invite->email,
-            'course_title'      => $progress->invite->project->title,
-            'completed_at'      => $progress->completed_at->format('F j, Y'),
-            'verification_code' => $verificationCode,
-        ])->setPaper('a4', 'landscape');
+            $verificationCode = strtoupper(substr(
+                hash('sha256', $progress->invite->token.$progress->completed_at->toIso8601String()),
+                0, 12
+            ));
 
-        $filename = 'certificates/' . $this->inviteId . '.pdf';
-        Storage::disk('local')->put($filename, $pdf->output());
+            $pdf = Pdf::loadView('certificates.completion', [
+                'viewer_name' => $progress->viewer_name ?? $progress->invite->email,
+                'course_title' => $progress->invite->project->title,
+                'completed_at' => $progress->completed_at->format('F j, Y'),
+                'verification_code' => $verificationCode,
+            ])->setPaper('a4', 'landscape');
 
-        $progress->update(['certificate_path' => $filename]);
+            $filename = 'certificates/'.$this->inviteId.'.pdf';
+            if (! Storage::disk('local')->put($filename, $pdf->output())) {
+                throw new \RuntimeException('Could not store certificate.');
+            }
 
-        Mail::to($progress->invite->email)->send(new CertificateMail($progress));
+            $progress->update(['certificate_path' => $filename]);
 
-        $progress->invite->invitedBy->notify(new ViewerCompletedNotification($progress));
+            Mail::to($progress->invite->email)->queue((new CertificateMail($progress))->onConnection('database')->beforeCommit());
+
+            $progress->invite->invitedBy->notify((new ViewerCompletedNotification($progress))->onConnection('database')->beforeCommit());
+        }, 3);
     }
 }

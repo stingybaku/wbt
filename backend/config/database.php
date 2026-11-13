@@ -31,6 +31,20 @@ return [
 
     'connections' => [
 
+        // Separate variables prevent tests from inheriting production DB_URL/DB_*.
+        'testing' => [
+            'driver' => 'pgsql',
+            'host' => env('TEST_DB_HOST', '127.0.0.1'),
+            'port' => env('TEST_DB_PORT', '55432'),
+            'database' => env('TEST_DB_DATABASE', 'wbt_test'),
+            'username' => env('TEST_DB_USERNAME', 'wbt_test'),
+            'password' => env('TEST_DB_PASSWORD', 'wbt_test'),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'search_path' => 'public',
+            'sslmode' => 'prefer',
+        ],
+
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),

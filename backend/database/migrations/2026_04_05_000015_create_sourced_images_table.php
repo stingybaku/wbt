@@ -9,6 +9,9 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Fresh databases need the type before creating the embedding column.
+        DB::statement('CREATE EXTENSION IF NOT EXISTS vector');
+
         Schema::create('sourced_images', function (Blueprint $table) {
             $table->id();
             $table->string('source');              // 'unsplash' | 'pexels'

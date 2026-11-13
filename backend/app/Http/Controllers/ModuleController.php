@@ -3,8 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
-use App\Jobs\GenerationJob;
 use App\Jobs\SeedImageCacheJob;
 use App\Models\Module;
 use App\Models\Project;
@@ -19,39 +17,20 @@ class ModuleController extends Controller
             'assessment_count'    => 'nullable|integer|min:0|max:10',
         ]);
 
-        $project = Project::where('id', $projectId)
-            ->where('user_id', $request->user()->id)
-            ->firstOrFail();
+        $project = $this->ownedProject($projectId);
 
         if (empty($project->source_text)) {
             return response()->json(['message' => 'Upload a content source before generating.'], 422);
         }
 
-        // Create or reset the module record
-        $module = Module::firstOrNew(['project_id' => $project->id]);
-        if (!$module->exists) {
-            $module->id = 'mod_' . Str::uuid()->toString();
-        }
-        $module->status           = 'generating';
-        $module->module_json      = null;
-        $module->generation_error = null;
-        $module->save();
-
-        GenerationJob::dispatch(
-            projectId:          $project->id,
-            durationMinutes:    $data['duration_minutes'] ?? 20,
-            learningObjectives: $data['learning_objectives'] ?? '',
-            assessmentCount:    $data['assessment_count'] ?? 5,
-        );
+        app(\App\Services\GenerationCredits::class)->enqueue($project, $data);
 
         return response()->json(['status' => 'generating'], 202);
     }
 
     public function show(Request $request, string $projectId)
     {
-        Project::where('id', $projectId)
-            ->where('user_id', $request->user()->id)
-            ->firstOrFail();
+        $this->ownedProject($projectId);
 
         // The editor polls this every 3 seconds while a module generates, and
         // only needs the status. `?fields=status` leaves module_json - an
@@ -81,11 +60,10 @@ class ModuleController extends Controller
             'module_json' => 'required|array',
         ]);
 
-        $project = Project::where('id', $projectId)
-            ->where('user_id', $request->user()->id)
-            ->firstOrFail();
+        $project = $this->ownedProject($projectId);
 
         $module = Module::where('project_id', $project->id)->firstOrFail();
+        abort_if($module->status === 'generating', 409, 'Wait for generation to finish before editing.');
         $module->module_json = $data['module_json'];
 
         // Sync module cover image if the editor set one explicitly in meta

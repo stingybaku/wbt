@@ -3,11 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\Event;
-use App\Models\Module;
 use App\Models\Project;
-use App\Models\Subscription;
 use App\Notifications\GenerationCompleteNotification;
-use Illuminate\Support\Str;
 use App\Notifications\GenerationFailedNotification;
 use App\Services\GenerationService;
 use App\Services\ImageCacheService;
@@ -16,86 +13,108 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class GenerationJob implements ShouldQueue
 {
     use Queueable;
 
     public int $timeout = 660; // 3 attempts × 3 min + 3 min image enrichment headroom
-    public int $tries   = 1;  // Retries are handled inside GenerationService
+
+    public bool $failOnTimeout = true;
+
+    public int $tries = 1;  // Retries are handled inside GenerationService
 
     private ImageCacheService $cache;
+
     private PexelsService $pexels;
 
     public function __construct(
         public readonly string $projectId,
-        public readonly int    $durationMinutes,
+        public readonly int $durationMinutes,
         public readonly string $learningObjectives,
-        public readonly int    $assessmentCount,
+        public readonly int $assessmentCount,
+        public readonly ?string $generationRunId = null,
     ) {}
 
     public function handle(GenerationService $service, ImageCacheService $cache, PexelsService $pexels): void
     {
-        $this->cache  = $cache;
+        $this->cache = $cache;
         $this->pexels = $pexels;
 
-        $project = Project::findOrFail($this->projectId);
-        $module  = Module::where('project_id', $this->projectId)->firstOrFail();
-
-        if (empty($project->source_text)) {
-            $this->markFailed($module, 'No source text available for generation.');
+        if (! $this->generationRunId) {
+            throw new \RuntimeException('Legacy generation job: drain old jobs before deploying credit reservations.');
+        }
+        $credits = app(\App\Services\GenerationCredits::class);
+        if (! $credits->claim($this->generationRunId)) {
             return;
         }
 
         try {
+            $project = Project::findOrFail($this->projectId);
+            if (empty($project->source_text)) {
+                throw new \RuntimeException('No source text available for generation.');
+            }
             $moduleJson = $service->generate(
-                sourceText:         $project->source_text,
-                durationMinutes:    $this->durationMinutes,
+                sourceText: $project->source_text,
+                durationMinutes: $this->durationMinutes,
                 learningObjectives: $this->learningObjectives,
-                assessmentCount:    $this->assessmentCount,
-                projectTitle:       $project->title,
+                assessmentCount: $this->assessmentCount,
+                projectTitle: $project->title,
             );
 
             [$moduleJson, $usedUrls] = $this->enrichImages($moduleJson);
             $moduleJson = $this->enrichVideos($moduleJson, $usedUrls);
             $moduleJson = $this->assignLayouts($moduleJson);
 
-            $module->update([
-                'module_json'      => $moduleJson,
-                'status'           => 'generated',
-                'generation_error' => null,
-                'cover_image_url'  => $this->extractCoverImage($moduleJson),
-            ]);
+            if (! $credits->finish($this->generationRunId, $moduleJson, $this->extractCoverImage($moduleJson))) {
+                return;
+            }
+        } catch (\Throwable $e) {
+            $this->failed($e);
 
-            // Increment modules_used on the active subscription
-            Subscription::where('user_id', $project->user_id)
-                ->where('status', 'active')
-                ->latest()
-                ->first()
-                ?->increment('modules_used');
+            return;
+        }
 
+        // Notification errors must never undo a successful generation or refund it.
+        try {
             $project->user->notify(new GenerationCompleteNotification($project));
 
             Event::create([
-                'id'         => 'evt_' . Str::uuid(),
+                'id' => 'evt_'.Str::uuid(),
                 'project_id' => $this->projectId,
-                'type'       => 'module.generated',
-                'meta'       => ['screen_count' => count($moduleJson['screens'] ?? [])],
+                'type' => 'module.generated',
+                'meta' => ['screen_count' => count($moduleJson['screens'] ?? [])],
             ]);
 
             Log::info("GenerationJob succeeded for project {$this->projectId}");
         } catch (\Throwable $e) {
-            $this->markFailed($module, $e->getMessage());
-            $project->user->notify(new GenerationFailedNotification($project));
+            Log::error('Generation succeeded but notification failed: '.$e->getMessage());
+        }
+    }
 
+    public function failed(?\Throwable $exception): void
+    {
+        if (! $this->generationRunId) {
+            return;
+        }
+        $changed = app(\App\Services\GenerationCredits::class)->finish(
+            $this->generationRunId, null, null, $exception?->getMessage() ?? 'Generation failed.'
+        );
+        if (! $changed) {
+            return;
+        }
+        $project = Project::find($this->projectId);
+        if ($project) {
             Event::create([
-                'id'         => 'evt_' . Str::uuid(),
-                'project_id' => $this->projectId,
-                'type'       => 'module.failed',
-                'meta'       => ['error' => $e->getMessage()],
+                'id' => 'evt_'.Str::uuid(), 'project_id' => $project->id,
+                'type' => 'module.failed', 'meta' => ['error' => $exception?->getMessage()],
             ]);
-
-            Log::error("GenerationJob failed for project {$this->projectId}: " . $e->getMessage());
+            try {
+                $project->user->notify(new GenerationFailedNotification($project));
+            } catch (\Throwable $e) {
+                Log::error('Failure notification failed: '.$e->getMessage());
+            }
         }
     }
 
@@ -139,7 +158,7 @@ class GenerationJob implements ShouldQueue
                 'source'       => $hit->source,
                 'external_id'  => $hit->external_id,
                 'photographer' => $hit->photographer,
-                'license'      => $hit->license,
+                'license' => $hit->license,
             ];
         }
 
@@ -163,7 +182,7 @@ class GenerationJob implements ShouldQueue
                 'source'       => 'pexels',
                 'external_id'  => $pexelsResult['external_id'],
                 'photographer' => $pexelsResult['photographer'],
-                'license'      => $pexelsResult['license'],
+                'license' => $pexelsResult['license'],
             ];
         }
 
@@ -175,12 +194,14 @@ class GenerationJob implements ShouldQueue
                     'query'       => $enrichedQuery,
                     'per_page'    => 3,
                     'orientation' => 'landscape',
-                    'client_id'   => $accessKey,
+                    'client_id' => $accessKey,
                 ]);
 
                 foreach ($res->json('results', []) as $photo) {
                     $url = $photo['urls']['regular'];
-                    if (in_array($url, $usedUrls)) continue;
+                    if (in_array($url, $usedUrls)) {
+                        continue;
+                    }
 
                     $unsplashTags = collect($photo['tags'] ?? [])
                         ->pluck('title')
@@ -206,11 +227,11 @@ class GenerationJob implements ShouldQueue
                         'source'       => 'unsplash',
                         'external_id'  => $photo['id'],
                         'photographer' => $photo['user']['name'],
-                        'license'      => 'Unsplash License',
+                        'license' => 'Unsplash License',
                     ];
                 }
             } catch (\Throwable $e) {
-                Log::warning("fetchImage: Unsplash failed for '{$refined}': " . $e->getMessage());
+                Log::warning("fetchImage: Unsplash failed for '{$refined}': ".$e->getMessage());
             }
         }
 
@@ -299,7 +320,7 @@ class GenerationJob implements ShouldQueue
         ];
 
         // Strip child-related terms unless the content is actually about children
-        if (!$this->isChildRelatedContent($lower)) {
+        if (! $this->isChildRelatedContent($lower)) {
             $peopleTerms = array_merge($peopleTerms, [
                 'child', 'children', 'kid', 'kids', 'boy', 'boys', 'girl', 'girls',
                 'baby', 'babies', 'infant', 'infants', 'toddler', 'toddlers',
@@ -331,19 +352,17 @@ class GenerationJob implements ShouldQueue
             'conclusion', 'conclusions', 'summary', 'summaries', 'recap', 'closing',
         ];
 
-        $words    = preg_split('/\s+/', $lower);
-        $filtered = array_filter($words, fn($w) =>
-            $w !== '' &&
-            !in_array($w, $peopleTerms) &&
-            !in_array($w, $stopWords)
+        $words = preg_split('/\s+/', $lower);
+        $filtered = array_filter($words, fn ($w) => $w !== '' &&
+            ! in_array($w, $peopleTerms) &&
+            ! in_array($w, $stopWords)
         );
 
         $refined = implode(' ', $filtered);
 
         // If stripping left too little, just remove people terms but keep stop words
         if (strlen($refined) < 4) {
-            $refined = implode(' ', array_filter($words, fn($w) =>
-                $w !== '' && !in_array($w, $peopleTerms)
+            $refined = implode(' ', array_filter($words, fn ($w) => $w !== '' && ! in_array($w, $peopleTerms)
             ));
         }
 
@@ -379,7 +398,9 @@ class GenerationJob implements ShouldQueue
         ];
 
         foreach ($childTopics as $term) {
-            if (str_contains($lower, $term)) return true;
+            if (str_contains($lower, $term)) {
+                return true;
+            }
         }
 
         return false;
@@ -405,24 +426,25 @@ class GenerationJob implements ShouldQueue
         );
 
         // Initialize attribution buckets for both sources
-        if (!isset($moduleJson['attribution']['unsplash'])) {
+        if (! isset($moduleJson['attribution']['unsplash'])) {
             $moduleJson['attribution']['unsplash'] = [];
         }
-        if (!isset($moduleJson['attribution']['pexels'])) {
+        if (! isset($moduleJson['attribution']['pexels'])) {
             $moduleJson['attribution']['pexels'] = [];
         }
 
         foreach ($moduleJson['screens'] as &$screen) {
             // Skip screens that already have a real (non-placeholder) image
             $existingUrl = $screen['image']['url'] ?? '';
-            if ($existingUrl && !str_contains($existingUrl, 'placeholder')) {
+            if ($existingUrl && ! str_contains($existingUrl, 'placeholder')) {
                 $usedUrls[] = $existingUrl; // still mark as used
+
                 continue;
             }
 
             // Use screen title as query; fall back to screen type for generic imagery
             $query = trim($screen['title'] ?? '');
-            if (!$query) {
+            if (! $query) {
                 continue;
             }
 
@@ -430,71 +452,80 @@ class GenerationJob implements ShouldQueue
             try {
                 $result = $this->fetchImage($query, $usedUrls, $moduleTopic ?: null, $moduleKeywords);
 
-                if (!$result) {
+                if (! $result) {
                     $skippedNoResults++;
+
                     continue;
                 }
 
                 $source = $result['source'];
                 $screen['image'] = [
-                    'url'      => $result['url'],
+                    'url' => $result['url'],
                     'alt_text' => $result['alt_text'],
                 ];
                 $screen['accessibility']['alt_text'] = $screen['image']['alt_text'];
 
                 $moduleJson['attribution'][$source][] = [
-                    'image_id'     => $result['external_id'],
+                    'image_id' => $result['external_id'],
                     'photographer' => $result['photographer'],
-                    'license'      => $result['license'],
+                    'license' => $result['license'],
                 ];
                 $succeeded++;
             } catch (\Throwable $e) {
                 $skippedError++;
-                Log::warning("Image enrichment failed for screen {$screen['id']}: " . $e->getMessage());
+                Log::warning("Image enrichment failed for screen {$screen['id']}: ".$e->getMessage());
             }
         }
 
         // Enrich click_reveal item images
         foreach ($moduleJson['screens'] as &$screen) {
-            if ($screen['type'] !== 'click_reveal') continue;
+            if ($screen['type'] !== 'click_reveal') {
+                continue;
+            }
 
             foreach ($screen['interactions'] as &$interaction) {
-                if (($interaction['kind'] ?? '') !== 'click_reveal') continue;
+                if (($interaction['kind'] ?? '') !== 'click_reveal') {
+                    continue;
+                }
 
                 foreach ($interaction['items'] as &$item) {
                     $existingUrl = $item['image']['url'] ?? '';
-                    if ($existingUrl && !str_contains($existingUrl, 'placeholder')) {
+                    if ($existingUrl && ! str_contains($existingUrl, 'placeholder')) {
                         $usedUrls[] = $existingUrl;
+
                         continue;
                     }
 
                     $query = trim($item['title'] ?? '');
-                    if (!$query) continue;
+                    if (! $query) {
+                        continue;
+                    }
 
                     $attempted++;
                     try {
                         $result = $this->fetchImage($query, $usedUrls, $moduleTopic ?: null, $moduleKeywords);
 
-                        if (!$result) {
+                        if (! $result) {
                             $skippedNoResults++;
+
                             continue;
                         }
 
                         $source = $result['source'];
                         $item['image'] = [
-                            'url'      => $result['url'],
+                            'url' => $result['url'],
                             'alt_text' => $result['alt_text'],
                         ];
 
                         $moduleJson['attribution'][$source][] = [
-                            'image_id'     => $result['external_id'],
+                            'image_id' => $result['external_id'],
                             'photographer' => $result['photographer'],
-                            'license'      => $result['license'],
+                            'license' => $result['license'],
                         ];
                         $succeeded++;
                     } catch (\Throwable $e) {
                         $skippedError++;
-                        Log::warning("Image enrichment failed for reveal item '{$query}': " . $e->getMessage());
+                        Log::warning("Image enrichment failed for reveal item '{$query}': ".$e->getMessage());
                     }
                 }
                 unset($item);
@@ -503,9 +534,9 @@ class GenerationJob implements ShouldQueue
         }
         unset($screen);
 
-        Log::info("Image enrichment complete for project {$this->projectId}: " .
-            "{$succeeded}/{$attempted} succeeded, " .
-            "{$skippedNoResults} no results, " .
+        Log::info("Image enrichment complete for project {$this->projectId}: ".
+            "{$succeeded}/{$attempted} succeeded, ".
+            "{$skippedNoResults} no results, ".
             "{$skippedError} errors."
         );
 
@@ -514,8 +545,11 @@ class GenerationJob implements ShouldQueue
             $seen = [];
             $moduleJson['attribution'][$source] = array_values(
                 array_filter($moduleJson['attribution'][$source], function ($entry) use (&$seen) {
-                    if (isset($seen[$entry['image_id']])) return false;
+                    if (isset($seen[$entry['image_id']])) {
+                        return false;
+                    }
                     $seen[$entry['image_id']] = true;
+
                     return true;
                 })
             );
@@ -529,24 +563,28 @@ class GenerationJob implements ShouldQueue
         $moduleTopic = $this->extractModuleTopic($moduleJson['meta'] ?? []);
 
         foreach ($moduleJson['screens'] as &$screen) {
-            if ($screen['type'] !== 'video') continue;
+            if ($screen['type'] !== 'video') {
+                continue;
+            }
 
             $interaction = &$screen['interactions'][0];
-            if (!empty($interaction['url'])) continue;
+            if (! empty($interaction['url'])) {
+                continue;
+            }
 
-            $query  = $screen['title'];
+            $query = $screen['title'];
             $result = $this->pexels->searchVideo($query);
 
-            if ($result && !empty($result['url'])) {
+            if ($result && ! empty($result['url'])) {
                 $interaction['url'] = $result['url'];
                 Log::info("enrichVideos: fetched Pexels video for '{$query}'");
             } else {
                 // No video found — convert to image_text with a fetched image
                 Log::warning("enrichVideos: no Pexels video for '{$query}', converting to image_text");
                 $image = $this->fetchImage($query, $usedUrls, $moduleTopic ?: null);
-                $screen['type']         = 'image_text';
+                $screen['type'] = 'image_text';
                 $screen['interactions'] = [];
-                $screen['image']        = $image
+                $screen['image'] = $image
                     ? ['url' => $image['url'], 'alt_text' => $image['alt_text']]
                     : ['url' => 'https://placeholder.wbtforge.dev/800x450', 'alt_text' => $query];
             }
@@ -571,18 +609,11 @@ class GenerationJob implements ShouldQueue
     {
         foreach ($moduleJson['screens'] ?? [] as $screen) {
             $url = $screen['image']['url'] ?? null;
-            if ($url && !str_contains($url, 'placeholder')) {
+            if ($url && ! str_contains($url, 'placeholder')) {
                 return $url;
             }
         }
-        return null;
-    }
 
-    private function markFailed(Module $module, string $message): void
-    {
-        $module->update([
-            'status'           => 'failed',
-            'generation_error' => $message,
-        ]);
+        return null;
     }
 }

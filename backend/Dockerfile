@@ -51,6 +51,13 @@ COPY backend/public ./public
 COPY backend/vite.config.js ./
 RUN npm run build
 
+FROM node:20-alpine AS scorm-player
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build:scorm
+
 # FrankenPHP (Caddy + PHP in one process) replaces `php artisan serve`, which is
 # PHP's single-threaded development server and handles one request at a time.
 FROM dunglas/frankenphp:1.13.4-php8.4.27-alpine
@@ -86,6 +93,7 @@ COPY backend/docker/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 COPY backend/. ./
 COPY --from=vendor /app/vendor ./vendor
 COPY --from=assets /app/public/build ./public/build
+COPY --from=scorm-player /app/backend/storage/app/scorm-player ./storage/app/scorm-player
 
 RUN chmod +x scripts/railway-start.sh
 

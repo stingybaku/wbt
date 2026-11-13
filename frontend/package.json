@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:scorm": "tsc -b && vite build --config vite.scorm.config.ts",
+    "test": "tsc -p tsconfig.scorm-tests.json && node --test tests/*.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -25,6 +25,8 @@ export function ViewerPlayerPage() {
 
   // Track accumulated progress for DB sync
   const answersRef = useRef<Record<string, ViewerQuestionAnswer>>({});
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const syncQueue = useRef<Promise<unknown>>(Promise.resolve());
   const visitedRef = useRef<number[]>([]);
   const screenRef = useRef<{ index: number; total: number }>({ index: 0, total: 0 });
 
@@ -83,20 +85,25 @@ export function ViewerPlayerPage() {
     }
   }
 
-  function syncProgress(index: number, total: number) {
+  function syncProgress(index: number, total: number, complete = false) {
     if (!token) return;
-    updateViewerProgress(token, {
+    const payload = {
       current_screen_index: index,
       total_screens: total,
-      question_answers: answersRef.current,
-      visited_screens: visitedRef.current,
-    }).catch(() => {});
+      question_answers: { ...answersRef.current },
+      visited_screens: [...visitedRef.current],
+      complete,
+    };
+    // Preserve answer/navigation order even when the connection is slow.
+    syncQueue.current = syncQueue.current.then(() => updateViewerProgress(token, payload))
+      .then(() => setSyncError(null))
+      .catch(() => setSyncError('Progress could not be saved. Reload the course to resume from your last saved screen.'));
   }
 
-  function handleScreenChange(index: number, total: number, visited: number[]) {
+  function handleScreenChange(index: number, total: number, visited: number[], complete = false) {
     screenRef.current = { index, total };
     visitedRef.current = visited;
-    syncProgress(index, total);
+    syncProgress(index, total, complete);
   }
 
   function handleAnswered(screenId: string, answer: ViewerQuestionAnswer) {
@@ -159,17 +166,20 @@ export function ViewerPlayerPage() {
   }
 
   return (
-    <WBTPlayer
-      module={state.module}
-      projectId=""
-      projectTitle={state.projectTitle}
-      viewerMode
-      initialScreenIndex={state.initialScreenIndex}
-      initialAnswers={state.initialAnswers}
-      initialVisited={state.initialVisited}
-      completedAt={state.completedAt ?? undefined}
-      onScreenChange={handleScreenChange}
-      onAnswered={handleAnswered}
-    />
+    <>
+      {syncError && <div role="alert" className="error-banner">{syncError}</div>}
+      <WBTPlayer
+        module={state.module}
+        projectId=""
+        projectTitle={state.projectTitle}
+        viewerMode
+        initialScreenIndex={state.initialScreenIndex}
+        initialAnswers={state.initialAnswers}
+        initialVisited={state.initialVisited}
+        completedAt={state.completedAt ?? undefined}
+        onScreenChange={handleScreenChange}
+        onAnswered={handleAnswered}
+      />
+    </>
   );
 }

@@ -3,13 +3,10 @@
 namespace App\Jobs;
 
 use Anthropic\Client as AnthropicClient;
-use App\Models\Module;
 use App\Models\Project;
 use App\Services\ModerationService;
-use Illuminate\Support\Str;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Smalot\PdfParser\Parser as PdfParser;
@@ -75,23 +72,14 @@ class SourceExtractionJob implements ShouldQueue
 
             Log::info("SourceExtractionJob succeeded for project {$this->projectId}: {$charCount} chars");
 
-            // Dispatch generation immediately if gen params were supplied at upload time
+            // Reserve credit and dispatch generation immediately if generation
+            // parameters were supplied at upload time.
             if ($project->gen_duration_minutes !== null) {
-                $module = Module::firstOrNew(['project_id' => $project->id]);
-                if (!$module->exists) {
-                    $module->id = 'mod_' . Str::uuid()->toString();
-                }
-                $module->status           = 'generating';
-                $module->module_json      = null;
-                $module->generation_error = null;
-                $module->save();
-
-                GenerationJob::dispatch(
-                    projectId:          $project->id,
-                    durationMinutes:    $project->gen_duration_minutes,
-                    learningObjectives: $project->gen_learning_objectives ?? '',
-                    assessmentCount:    $project->gen_assessment_count ?? 5,
-                );
+                app(\App\Services\GenerationCredits::class)->enqueue($project, [
+                    'duration_minutes' => $project->gen_duration_minutes,
+                    'learning_objectives' => $project->gen_learning_objectives ?? '',
+                    'assessment_count' => $project->gen_assessment_count ?? 5,
+                ]);
 
                 Log::info("SourceExtractionJob: dispatched GenerationJob for project {$this->projectId}");
             }
@@ -135,19 +123,7 @@ class SourceExtractionJob implements ShouldQueue
 
     private function extractFromUrl(): array
     {
-        $response = Http::timeout(15)
-            ->withHeaders([
-                'User-Agent'      => 'Mozilla/5.0 (compatible; WBTForge/1.0; +https://wbtforge.com)',
-                'Accept'          => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language' => 'en-US,en;q=0.5',
-            ])
-            ->get($this->url);
-
-        if (!$response->successful()) {
-            throw new \RuntimeException("Could not fetch URL (HTTP {$response->status()})");
-        }
-
-        $html = $response->body();
+        $html = app(\App\Services\PublicUrlFetcher::class)->fetch($this->url);
         $html = preg_replace('/<script\b[^>]*>.*?<\/script>/is', '', $html);
         $html = preg_replace('/<style\b[^>]*>.*?<\/style>/is', '', $html);
         $text = strip_tags($html);
