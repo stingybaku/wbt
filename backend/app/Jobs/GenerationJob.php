@@ -83,8 +83,12 @@ class GenerationJob implements ShouldQueue
             Event::create([
                 'id' => 'evt_'.Str::uuid(),
                 'project_id' => $this->projectId,
-                'type' => 'module.generated',
-                'meta' => ['screen_count' => count($moduleJson['screens'] ?? [])],
+                'type'       => 'module.generated',
+                'meta'       => [
+                    'screen_count' => count($moduleJson['screens'] ?? []),
+                    'prompt'       => $service->promptId(),
+                    'model'        => $service->model(),
+                ],
             ]);
 
             Log::info("GenerationJob succeeded for project {$this->projectId}");

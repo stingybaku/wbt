@@ -84,4 +84,32 @@ class GenerationCredits
             return true;
         }, 3);
     }
+
+    public function reapStuck(string $projectId, \DateTimeInterface $cutoff, string $error): bool
+    {
+        return DB::transaction(function () use ($projectId, $cutoff, $error) {
+            $module = Module::where('project_id', $projectId)->lockForUpdate()->first();
+            if (! $module || $module->status !== 'generating' || $module->updated_at >= $cutoff) {
+                return false;
+            }
+
+            $run = GenerationRun::where('project_id', $projectId)
+                ->whereIn('status', ['queued', 'running'])
+                ->lockForUpdate()
+                ->first();
+
+            if ($run) {
+                $subscription = Subscription::whereKey($run->subscription_id)->lockForUpdate()->firstOrFail();
+                $subscription->decrement('modules_reserved');
+                $run->update(['status' => 'failed']);
+            }
+
+            $module->update([
+                'status' => $module->module_json ? 'generated' : 'failed',
+                'generation_error' => $error,
+            ]);
+
+            return true;
+        }, 3);
+    }
 }

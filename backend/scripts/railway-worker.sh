@@ -103,6 +103,17 @@ mkdir -p /tmp/health
 echo '<?php http_response_code(200); echo "OK";' > /tmp/health/index.php
 php -S "0.0.0.0:${PORT:-8080}" -t /tmp/health &>/dev/null &
 
+# Laravel scheduler (routes/console.php), e.g. generation:reap-stuck. One
+# fresh `schedule:run` per minute, the cron equivalent, so a crashed run
+# can't take the scheduler down with it. Only this container runs it, so
+# scheduled tasks never fire twice.
+(
+  while true; do
+    php artisan schedule:run --no-interaction || echo "Worker: schedule:run exited with $?" >&2
+    sleep 60
+  done
+) &
+
 # queue:work exits on its own by design: with status 0 after --max-jobs (and
 # after `php artisan queue:restart`), and with 12 after --memory. A Railway
 # ON_FAILURE restart policy does not restart a clean exit, so with a bare
